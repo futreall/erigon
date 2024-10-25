@@ -313,6 +313,20 @@ func wrapTxWithCtxForTest(tx kv.Tx, ctx *AggregatorRoTx) *wrappedTxWithCtx {
 // If some commitment exists, they will be accepted as correct and next kv range will be processed.
 // DB expected to be empty, committed into db keys will be not processed.
 func (a *Aggregator) RebuildCommitmentFiles(ctx context.Context, rwDb kv.RwDB, txNumsReader *rawdbv3.TxNumsReader) (latestRoot []byte, err error) {
+	topLimit := 2976 * a.StepSize()
+	a.d[kv.CommitmentDomain].canSkipReplaceOnMerge = true
+
+	for {
+		smthDone, err := a.mergeLoopStep(ctx, topLimit)
+		if err != nil {
+			return nil, err
+		}
+		if !smthDone {
+			break
+		}
+	}
+	return nil, nil
+
 	acRo := a.BeginFilesRo() // this tx is used to read existing domain files and closed in the end
 	defer acRo.Close()
 

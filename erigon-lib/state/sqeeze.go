@@ -313,17 +313,12 @@ func wrapTxWithCtxForTest(tx kv.Tx, ctx *AggregatorRoTx) *wrappedTxWithCtx {
 // If some commitment exists, they will be accepted as correct and next kv range will be processed.
 // DB expected to be empty, committed into db keys will be not processed.
 func (a *Aggregator) RebuildCommitmentFiles(ctx context.Context, rwDb kv.RwDB, txNumsReader *rawdbv3.TxNumsReader) (latestRoot []byte, err error) {
-	topLimit := 2976 * a.StepSize()
-	a.d[kv.CommitmentDomain].canSkipReplaceOnMerge = true
-
-	for {
-		smthDone, err := a.mergeLoopStep(ctx, topLimit)
-		if err != nil {
-			return nil, err
-		}
-		if !smthDone {
-			break
-		}
+	actx := a.BeginFilesRo()
+	defer actx.Close()
+	if err = actx.SqueezeCommitmentFiles(actx); err != nil {
+		a.logger.Warn("squeezeCommitmentFiles failed", "err", err)
+		fmt.Printf("rebuilt commitment files still available. Instead of re-run, you have to run 'erigon snapshots sqeeze' to finish squeezing")
+		return nil, err
 	}
 	return nil, nil
 

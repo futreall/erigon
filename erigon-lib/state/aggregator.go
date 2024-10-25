@@ -1440,7 +1440,7 @@ func (ac *AggregatorRoTx) findMergeRange(maxEndTxNum, maxSpan uint64) RangesV3 {
 		r.domain[id] = d.findMergeRange(maxEndTxNum, maxSpan)
 	}
 
-	if ac.a.commitmentValuesTransform && r.domain[kv.CommitmentDomain].values.needMerge {
+	if ac.a.commitmentValuesTransform && r.domain[kv.CommitmentDomain].values.needMerge && !ac.a.d[kv.CommitmentDomain].canSkipReplaceOnMerge {
 		cr := r.domain[kv.CommitmentDomain]
 
 		restorePrevRange := false

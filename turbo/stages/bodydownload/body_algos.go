@@ -65,7 +65,7 @@ func (bd *BodyDownload) UpdateFromDb(db kv.Tx) (headHeight, headTime uint64, hea
 		return 0, 0, libcommon.Hash{}, nil, err
 	}
 	if !ok {
-		return 0, 0, libcommon.Hash{}, nil, fmt.Errorf("canonical marker not found: %d", headHeight)
+		return 0, 0, libcommon.Hash{}, nil, fmt.Errorf("canonical marker not found: %d. bodyProgress %d HeadProgress", headHeight, bodyProgress, headerProgress)
 	}
 	var headTd *big.Int
 	headTd, err = rawdb.ReadTd(db, headHash, headHeight)

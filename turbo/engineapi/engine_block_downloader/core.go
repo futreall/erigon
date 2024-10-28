@@ -85,6 +85,7 @@ func (e *EngineBlockDownloader) download(ctx context.Context, hashToDownload lib
 		e.status.Store(headerdownload.Idle)
 		return
 	}
+	e.logger.Debug("[EngineBlockDownloader] Downloading blocks", "from", startBlock, "to", endBlock, "hash", startHash)
 
 	// bodiesCollector := etl.NewCollector("EngineBlockDownloader", e.tmpdir, etl.NewSortableBuffer(etl.BufferOptimalSize), e.logger)
 	if err := e.downloadAndLoadBodiesSyncronously(ctx, memoryMutation, startBlock, endBlock); err != nil {

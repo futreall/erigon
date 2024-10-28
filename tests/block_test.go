@@ -24,7 +24,6 @@ package tests
 import (
 	"fmt"
 	"runtime"
-	"sort"
 	"testing"
 	"time"
 
@@ -81,23 +80,4 @@ func TestBlockchain(t *testing.T) {
 	fmt.Println("Average blockchain test time:", averageTime)
 	fmt.Println("Test count:", len(testTimes))
 	fmt.Println("Blockchain tests took", time.Since(startTime))
-}
-
-func sortMapByValue(m map[string]time.Duration) []string {
-	type kv struct {
-		Key   string
-		Value time.Duration
-	}
-	var ss []kv
-	for k, v := range m {
-		ss = append(ss, kv{k, v})
-	}
-	sort.Slice(ss, func(i, j int) bool {
-		return ss[i].Value < ss[j].Value
-	})
-	var keys []string
-	for _, kv := range ss {
-		keys = append(keys, kv.Key)
-	}
-	return keys
 }

@@ -17,8 +17,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Erigon. If not, see <http://www.gnu.org/licenses/>.
 
-//go:build integration
-
 package tests
 
 import (
@@ -28,7 +26,9 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"sort"
 	"testing"
+	"time"
 
 	"github.com/erigontech/erigon-lib/common/datadir"
 	"github.com/erigontech/erigon-lib/kv/temporal/temporaltest"
@@ -59,12 +59,17 @@ func TestState(t *testing.T) {
 	st.skipLoad(`create2collisionStorageParis.json`)
 	st.skipLoad(`dynamicAccountOverwriteEmpty_Paris.json`)
 
+	fmt.Println("Running TestState tests")
+	testTimes := make(map[string]time.Duration)
+	startTime := time.Now()
+
 	dirs := datadir.New(t.TempDir())
 	db, _ := temporaltest.NewTestDB(t, dirs)
 	st.walk(t, stateTestDir, func(t *testing.T, name string, test *StateTest) {
 		for _, subtest := range test.Subtests() {
 			subtest := subtest
 			key := fmt.Sprintf("%s/%d", subtest.Fork, subtest.Index)
+			testStart := time.Now()
 			t.Run(key, func(t *testing.T) {
 				withTrace(t, func(vmconfig vm.Config) error {
 					tx, err := db.BeginRw(context.Background())
@@ -81,8 +86,24 @@ func TestState(t *testing.T) {
 					return st.checkFailure(t, err)
 				})
 			})
+			testTimes[name] = time.Since(testStart)
 		}
 	})
+
+	fmt.Println("TestState test times:")
+	for _, name := range sortMapByValue(testTimes) {
+		fmt.Println(name, testTimes[name])
+	}
+
+	averageTime := time.Duration(0)
+	for _, time := range testTimes {
+		averageTime += time
+	}
+	averageTime /= time.Duration(len(testTimes))
+
+	fmt.Println("Average TestState test time:", averageTime)
+	fmt.Println("Test count:", len(testTimes))
+	fmt.Println("TestState tests took", time.Since(startTime))
 }
 
 func withTrace(t *testing.T, test func(vm.Config) error) {
@@ -112,4 +133,23 @@ func withTrace(t *testing.T, test func(vm.Config) error) {
 	}
 	//t.Logf("EVM output: 0x%x", tracer.Output())
 	//t.Logf("EVM error: %v", tracer.Error())
+}
+
+func sortMapByValue(m map[string]time.Duration) []string {
+	type kv struct {
+		Key   string
+		Value time.Duration
+	}
+	var ss []kv
+	for k, v := range m {
+		ss = append(ss, kv{k, v})
+	}
+	sort.Slice(ss, func(i, j int) bool {
+		return ss[i].Value < ss[j].Value
+	})
+	var keys []string
+	for _, kv := range ss {
+		keys = append(keys, kv.Key)
+	}
+	return keys
 }

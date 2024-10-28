@@ -1518,6 +1518,7 @@ func (s *RoSnapshots) ViewSingleFile(t snaptype.Type, blockNum uint64) (segment 
 	segmentRotx := s.visible[t.Enum()].BeginRo()
 
 	for _, seg := range segmentRotx.Segments {
+		log.Debug("[snapshots] ViewSingleFile", "seg_from", seg.from, "to", seg.to, "blockNum", blockNum, "src_filename", seg.src.FileName())
 		if !(blockNum >= seg.from && blockNum < seg.to) {
 			continue
 		}

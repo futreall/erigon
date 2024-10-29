@@ -147,8 +147,12 @@ func TestTxLookup(t *testing.T) {
 	err = stages.SaveStageProgress(tx, stages.Execution, 3)
 	require.NoError(err)
 
-	cfg := stagedsync.StageTxLookupCfg(db, prune.DefaultMode, "", nil, br)
-	err = stagedsync.SpawnTxLookup(&stagedsync.StageState{ID: stages.TxLookup}, tx, 2, cfg, m.Ctx, log.New())
+	pm := prune.Mode{ // prune nothing
+		Initialised: true,
+		History:     prune.Distance(10_000),
+	}
+	cfg := stagedsync.StageTxLookupCfg(db, pm, "", nil, br)
+	err = stagedsync.SpawnTxLookup(&stagedsync.StageState{ID: stages.TxLookup}, tx, 3, cfg, m.Ctx, log.New())
 	require.NoError(err)
 
 	{
@@ -159,10 +163,18 @@ func TestTxLookup(t *testing.T) {
 		require.Equal(2, int(*bn))
 	}
 
+	pm = prune.Mode{ // prune more
+		Initialised: true,
+		History:     prune.Distance(1),
+	}
+	cfg = stagedsync.StageTxLookupCfg(db, pm, "", nil, br)
 	err = stagedsync.PruneTxLookup(&stagedsync.PruneState{ID: stages.TxLookup}, tx, cfg, m.Ctx, log.New())
 	require.NoError(err)
 	{
-		//bn, _ := rawdb.ReadTxLookupEntry(tx, bodies[0].Transactions[0].Hash())
-		//require.Equal(1, bn)
+		bn, _ := rawdb.ReadTxLookupEntry(tx, bodies[1].Transactions[0].Hash())
+		require.Equal(1, int(*bn))
+
+		bn, _ = rawdb.ReadTxLookupEntry(tx, bodies[2].Transactions[0].Hash())
+		require.Equal(2, int(*bn))
 	}
 }

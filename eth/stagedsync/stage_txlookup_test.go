@@ -56,11 +56,11 @@ func TestTxLookup(t *testing.T) {
 
 	// prepare txn so it works with our test
 	signer1 := types.MakeSigner(params.TestChainConfig, params.TestChainConfig.BerlinBlock.Uint64(), 0)
-	header := &types.Header{Number: libcommon.Big0}
+	header := &types.Header{Number: libcommon.Big1}
 	hash := header.Hash()
 	require.NoError(rawdb.WriteHeader(tx, header))
-	bodies := [2]*types.Body{}
-	bodies[0] = &types.Body{
+	bodies := [4]*types.Body{}
+	bodies[1] = &types.Body{
 		Transactions: []types.Transaction{
 			mustSign(&types.AccessListTx{
 				LegacyTx: types.LegacyTx{
@@ -86,11 +86,11 @@ func TestTxLookup(t *testing.T) {
 			}, *signer1),
 		},
 	}
-	require.NoError(rawdb.WriteBody(tx, hash, 0, bodies[0]))
-	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 0))
+	require.NoError(rawdb.WriteBody(tx, hash, 1, bodies[1]))
+	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 1))
 
 	signer2 := types.MakeSigner(params.TestChainConfig, params.TestChainConfig.BerlinBlock.Uint64(), 0)
-	header.Number = libcommon.Big1
+	header.Number = libcommon.Big2
 	hash = header.Hash()
 	require.NoError(rawdb.WriteHeader(tx, header))
 	bodies[1] = &types.Body{
@@ -130,14 +130,13 @@ func TestTxLookup(t *testing.T) {
 			}, *signer2),
 		},
 	}
-	require.NoError(rawdb.WriteBody(tx, hash, 1, bodies[1]))
+	require.NoError(rawdb.WriteBody(tx, hash, 2, bodies[2]))
+	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 2))
 
-	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 1))
-
-	header.Number = libcommon.Big2
+	header.Number = libcommon.Big3
 	hash = header.Hash()
 	require.NoError(rawdb.WriteHeader(tx, header))
-	err = rawdb.WriteBody(tx, hash, 2, &types.Body{
+	err = rawdb.WriteBody(tx, hash, 3, &types.Body{
 		Transactions: []types.Transaction{}, Uncles: []*types.Header{{GasLimit: 3}},
 	})
 	require.NoError(err)

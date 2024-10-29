@@ -907,7 +907,7 @@ func (d *Downloader) mainLoop(silent bool) error {
 					clist = append(clist, t.Name())
 					continue
 				}
-
+				log.Info("[snapshots] not complete torrent", "torrent", t.Name())
 				if isComplete, length, completionTime := d.checkComplete(t.Name()); isComplete && completionTime != nil {
 					if _, ok := checking[t.Name()]; !ok {
 						fileInfo, _, ok := snaptype.ParseFileName(d.SnapDir(), t.Name())

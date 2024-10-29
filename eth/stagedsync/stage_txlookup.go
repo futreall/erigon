@@ -265,7 +265,7 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 
 	if blockFrom < blockTo {
 		t := time.Now()
-		deleted, err := deleteTxLookupRange2(tx, blockTo, ctx, pruneLimit, pruneTimeout)
+		deleted, done, err := deleteTxLookupRange2(tx, blockFrom, blockTo, ctx, pruneLimit, pruneTimeout)
 		if err != nil {
 			return fmt.Errorf("prune TxLookUp: %w", err)
 		}
@@ -278,9 +278,10 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 				return fmt.Errorf("prune BorTxLookUp: %w", err)
 			}
 		}
-
-		if err = s.DoneAt(tx, blockTo); err != nil {
-			return err
+		if done {
+			if err = s.DoneAt(tx, blockTo); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -293,29 +294,36 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 }
 
 // deleteTxLookupRange2 - [blockFrom, blockTo)
-func deleteTxLookupRange2(tx kv.RwTx, blockTo uint64, ctx context.Context, limit int, timeout time.Duration) (deleted int, err error) {
+func deleteTxLookupRange2(tx kv.RwTx, blockFrom, blockTo uint64, ctx context.Context, limit int, timeout time.Duration) (deleted int, done bool, err error) {
 	t := time.Now()
 	prunedKey, err := rawdbv3.PruneProgress(tx, kv.TxLookup)
 	if err != nil {
-		return deleted, err
+		return deleted, done, err
 	}
+	if prunedKey == nil {
+		if blockTo-blockFrom < 100 {
+			log.Warn("[dbg] skip prune")
+			return
+		}
+	}
+
 	c, err := tx.RwCursor(kv.TxLookup)
 	if err != nil {
-		return deleted, err
+		return deleted, done, err
 	}
 	defer c.Close()
 
 	var k, v []byte
 	for k, v, err = c.Seek(prunedKey); k != nil; k, v, err = c.Next() {
 		if err != nil {
-			return deleted, err
+			return deleted, done, err
 		}
 		bn := ^binary.BigEndian.Uint64(v)
 		if bn >= blockTo {
 			continue
 		}
 		if err := c.DeleteCurrent(); err != nil {
-			return deleted, err
+			return deleted, done, err
 		}
 		deleted++
 		limit--
@@ -327,7 +335,7 @@ func deleteTxLookupRange2(tx kv.RwTx, blockTo uint64, ctx context.Context, limit
 		if limit%100 == 0 {
 			select {
 			case <-ctx.Done():
-				return deleted, ctx.Err()
+				return deleted, done, ctx.Err()
 			default:
 			}
 
@@ -338,9 +346,9 @@ func deleteTxLookupRange2(tx kv.RwTx, blockTo uint64, ctx context.Context, limit
 	}
 
 	if err := rawdbv3.SavePruneProgress(tx, kv.TxLookup, k); err != nil {
-		return deleted, err
+		return deleted, done, err
 	}
-	return deleted, nil
+	return deleted, k == nil, nil
 }
 
 func deleteTxLookupRange(tx kv.RwTx, logPrefix string, blockFrom, blockTo uint64, ctx context.Context, cfg TxLookupCfg, logger log.Logger) (deleted int, err error) {

@@ -279,6 +279,8 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 				return err
 			}
 		}
+	} else {
+		log.Warn("[dbg] TxLookup skip1", "blockFrom", blockFrom, "blockTo", blockTo, "cfg.prune.History.Enabled()", cfg.prune.History.Enabled(), "cfg.prune.History.PruneTo(s.ForwardProgress)", cfg.prune.History.PruneTo(s.ForwardProgress), "cfg.blockReader.CanPruneTo(s.ForwardProgress)", cfg.blockReader.CanPruneTo(s.ForwardProgress))
 	}
 
 	if !useExternalTx {

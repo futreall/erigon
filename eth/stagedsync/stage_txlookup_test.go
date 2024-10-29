@@ -19,6 +19,8 @@ package stagedsync_test
 import (
 	"testing"
 
+	"github.com/erigontech/erigon-lib/kv"
+	"github.com/erigontech/erigon-lib/kv/rawdbv3"
 	"github.com/stretchr/testify/require"
 
 	libcommon "github.com/erigontech/erigon-lib/common"
@@ -162,6 +164,8 @@ func TestTxLookup(t *testing.T) {
 		require.Equal(2, int(*bn))
 	}
 
+	require.NoError(rawdbv3.SavePruneProgress(tx, kv.TxLookup, []byte{})) // bypass protection of "too small prunes"
+
 	pm = prune.Mode{ // prune more
 		Initialised: true,
 		History:     prune.Distance(1),
@@ -169,9 +173,10 @@ func TestTxLookup(t *testing.T) {
 	cfg = stagedsync.StageTxLookupCfg(db, pm, "", nil, br)
 	err = stagedsync.PruneTxLookup(&stagedsync.PruneState{ID: stages.TxLookup, ForwardProgress: 3}, tx, cfg, m.Ctx, log.New())
 	require.NoError(err)
+
 	{
 		bn, _ := rawdb.ReadTxLookupEntry(tx, bodies[1].Transactions[0].Hash())
-		require.Equal(1, int(*bn))
+		require.Nil(bn)
 
 		bn, _ = rawdb.ReadTxLookupEntry(tx, bodies[2].Transactions[0].Hash())
 		require.Equal(2, int(*bn))

@@ -314,7 +314,7 @@ func deleteTxLookupRange2(tx kv.RwTx, blockFrom, blockTo uint64, ctx context.Con
 		if err != nil {
 			return deleted, done, err
 		}
-		bn := ^binary.BigEndian.Uint64(v)
+		bn := binary.BigEndian.Uint64(v)
 		if bn >= blockTo {
 			continue
 		}

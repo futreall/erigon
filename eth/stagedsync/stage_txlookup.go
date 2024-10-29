@@ -269,9 +269,7 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 		if err != nil {
 			return fmt.Errorf("prune TxLookUp: %w", err)
 		}
-		if time.Since(t) > pruneTimeout {
-			log.Warn("[dbg] TxLookup", "pruned_txs", deleted, "took", time.Since(t), "cfg.prune.History.Enabled()", cfg.prune.History.Enabled(), "cfg.prune.History.PruneTo(s.ForwardProgress)", cfg.prune.History.PruneTo(s.ForwardProgress), "cfg.blockReader.CanPruneTo(s.ForwardProgress)", cfg.blockReader.CanPruneTo(s.ForwardProgress))
-		}
+		log.Warn("[dbg] TxLookup", "pruned_txs", deleted, "took", time.Since(t), "cfg.prune.History.Enabled()", cfg.prune.History.Enabled(), "cfg.prune.History.PruneTo(s.ForwardProgress)", cfg.prune.History.PruneTo(s.ForwardProgress), "cfg.blockReader.CanPruneTo(s.ForwardProgress)", cfg.blockReader.CanPruneTo(s.ForwardProgress))
 
 		if cfg.borConfig != nil && pruneBor {
 			if err = deleteBorTxLookupRange(tx, logPrefix, blockFrom, blockTo, ctx, cfg, logger); err != nil {

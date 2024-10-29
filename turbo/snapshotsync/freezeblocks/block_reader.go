@@ -582,7 +582,7 @@ func (r *BlockReader) CanonicalHash(ctx context.Context, tx kv.Getter, blockHeig
 
 	seg, ok, release := r.sn.ViewSingleFile(coresnaptype.Headers, blockHeight)
 	if !ok {
-		log.Info("ViewSingleFile failed", "blockHeight", blockHeight)
+		//log.Info("ViewSingleFile failed", "blockHeight", blockHeight)
 		return h, false, nil
 	}
 	defer release()

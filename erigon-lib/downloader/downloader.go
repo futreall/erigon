@@ -970,11 +970,11 @@ func (d *Downloader) mainLoop(silent bool) error {
 					flist = append(flist, t.Name())
 					continue
 				}
-
+				log.Info("[snapshots] Checking torrent", "torrent", t.Name())
 				d.lock.RLock()
 				_, downloading := d.downloading[t.Name()]
 				d.lock.RUnlock()
-
+				log.Info("[snapshots] Checking torrent", "torrent", t.Name(), "downloading", downloading)
 				if downloading && t.Complete.Bool() {
 					select {
 					case <-d.ctx.Done():
@@ -982,6 +982,7 @@ func (d *Downloader) mainLoop(silent bool) error {
 					case <-t.GotInfo():
 					}
 
+					log.Info("[snapshots] Checking torrent", "torrent", t.Name(), "got-info", t.Complete.Bool())
 					var completionTime *time.Time
 					fileInfo, _, ok := snaptype.ParseFileName(d.SnapDir(), t.Name())
 
@@ -1036,7 +1037,7 @@ func (d *Downloader) mainLoop(silent bool) error {
 				pending = append(pending, t)
 				plist = append(plist, t.Name())
 			}
-
+			log.Info("[snapshots] Checking torrent", "pending", plist, "complete", clist, "failed", flist, "downloading", dlist)
 			select {
 			case <-d.ctx.Done():
 				return
@@ -1055,7 +1056,7 @@ func (d *Downloader) mainLoop(silent bool) error {
 					}
 
 				}
-
+				log.Info("[snapshots] Download complete", "file", status.name, "infohash", status.infoHash, "length", status.length, "err", status.err)
 				if status.err == nil {
 					var completionTime *time.Time
 					fileInfo, _, ok := snaptype.ParseFileName(d.SnapDir(), status.name)
@@ -1105,7 +1106,7 @@ func (d *Downloader) mainLoop(silent bool) error {
 			d.lock.RLock()
 			webDownloadInfoLen := len(d.webDownloadInfo)
 			d.lock.RUnlock()
-
+			log.Info("[snapshots] Checking torrent", "pending", plist, "complete", clist, "failed", flist, "downloading", dlist, "webDownloadInfo", webDownloadInfoLen)
 			if len(pending)+webDownloadInfoLen == 0 {
 				select {
 				case <-d.ctx.Done():
@@ -1114,7 +1115,7 @@ func (d *Downloader) mainLoop(silent bool) error {
 					continue
 				}
 			}
-
+			log.Info("[snapshots] Checking torrent after select", "pending", plist, "complete", clist, "failed", flist, "downloading", dlist, "webDownloadInfo", webDownloadInfoLen)
 			d.lock.Lock()
 			downloadingLen := len(d.downloading)
 			d.stats.Downloading = int32(downloadingLen)

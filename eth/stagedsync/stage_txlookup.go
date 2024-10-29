@@ -253,8 +253,6 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 	} else {
 		blockTo = cfg.blockReader.CanPruneTo(s.ForwardProgress)
 	}
-	// can't prune much here: because tx_lookup index has crypto-hashed-keys, and 1 block producing hundreds of deletes
-	blockTo = min(blockTo, blockFrom+10)
 
 	pruneLimit := 10_000
 	pruneTimeout := 250 * time.Millisecond

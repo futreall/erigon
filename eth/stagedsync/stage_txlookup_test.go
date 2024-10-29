@@ -144,8 +144,7 @@ func TestTxLookup(t *testing.T) {
 	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 3))
 	require.NoError(stages.SaveStageProgress(tx, stages.Bodies, 3))
 
-	err = stages.SaveStageProgress(tx, stages.Execution, 3)
-	require.NoError(err)
+	require.NoError(stages.SaveStageProgress(tx, stages.Execution, 3))
 
 	pm := prune.Mode{ // prune nothing
 		Initialised: true,
@@ -168,7 +167,7 @@ func TestTxLookup(t *testing.T) {
 		History:     prune.Distance(1),
 	}
 	cfg = stagedsync.StageTxLookupCfg(db, pm, "", nil, br)
-	err = stagedsync.PruneTxLookup(&stagedsync.PruneState{ID: stages.TxLookup}, tx, cfg, m.Ctx, log.New())
+	err = stagedsync.PruneTxLookup(&stagedsync.PruneState{ID: stages.TxLookup, ForwardProgress: 3}, tx, cfg, m.Ctx, log.New())
 	require.NoError(err)
 	{
 		bn, _ := rawdb.ReadTxLookupEntry(tx, bodies[1].Transactions[0].Hash())

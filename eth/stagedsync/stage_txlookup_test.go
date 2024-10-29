@@ -141,9 +141,11 @@ func TestTxLookup(t *testing.T) {
 	})
 	require.NoError(err)
 
-	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 2))
+	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 3))
+	require.NoError(stages.SaveStageProgress(tx, stages.Bodies, 3))
 
-	require.NoError(stages.SaveStageProgress(tx, stages.Bodies, 2))
+	err = stages.SaveStageProgress(tx, stages.Execution, 3)
+	require.NoError(err)
 
 	cfg := stagedsync.StageTxLookupCfg(db, prune.DefaultMode, "", nil, br)
 	err = stagedsync.SpawnTxLookup(&stagedsync.StageState{ID: stages.TxLookup}, tx, 2, cfg, m.Ctx, log.New())

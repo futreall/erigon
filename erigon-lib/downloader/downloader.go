@@ -871,6 +871,10 @@ func (d *Downloader) mainLoop(silent bool) error {
 
 	d.wg.Add(1)
 	go func() {
+		log.Info("[snapshots] Starting downloader", "slots", fileSlots, "piece-slots", pieceSlots)
+		defer func() {
+			log.Info("[snapshots] Stopping downloader")
+		}()
 		defer d.wg.Done()
 
 		checking := map[string]struct{}{}

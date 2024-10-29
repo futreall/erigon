@@ -153,10 +153,10 @@ func TestTxLookup(t *testing.T) {
 
 	{
 		bn, _ := rawdb.ReadTxLookupEntry(tx, bodies[1].Transactions[0].Hash())
-		require.Equal(1, *bn)
+		require.Equal(1, int(*bn))
 
 		bn, _ = rawdb.ReadTxLookupEntry(tx, bodies[2].Transactions[0].Hash())
-		require.Equal(2, *bn)
+		require.Equal(2, int(*bn))
 	}
 
 	err = stagedsync.PruneTxLookup(&stagedsync.PruneState{ID: stages.TxLookup}, tx, cfg, m.Ctx, log.New())

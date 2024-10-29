@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/erigontech/erigon-lib/kv/rawdbv3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/erigontech/erigon-lib/kv/memdb"
@@ -146,12 +147,12 @@ func TestArchiveWriter(t *testing.T) {
 
 func TestPrunableProgress(t *testing.T) {
 	_, tx := memdb.NewTestTx(t)
-	SaveExecV3PrunableProgress(tx, []byte("test"), 100)
-	s, err := GetExecV3PrunableProgress(tx, []byte("test"))
+	rawdbv3.SavePrunableStep(tx, []byte("test"), 100)
+	s, err := rawdbv3.PrunableStep(tx, []byte("test"))
 	require.NoError(t, err)
 	require.EqualValues(t, s, 100)
-	SaveExecV3PrunableProgress(tx, []byte("test"), 120)
-	s, err = GetExecV3PrunableProgress(tx, []byte("test"))
+	rawdbv3.SavePrunableStep(tx, []byte("test"), 120)
+	s, err = rawdbv3.PrunableStep(tx, []byte("test"))
 	require.NoError(t, err)
 	require.EqualValues(t, s, 120)
 }

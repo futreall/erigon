@@ -33,6 +33,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/erigontech/erigon-lib/kv/rawdbv3"
 	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
 	btree2 "github.com/tidwall/btree"
@@ -1483,7 +1484,7 @@ func TestDomain_CanPruneAfterAggregation(t *testing.T) {
 	totalTx := uint64(5000)
 	keyTxsLimit := uint64(50)
 	keyLimit := uint64(200)
-	SaveExecV3PrunableProgress(tx, kv.MinimumPrunableStepDomainKey, 0)
+	rawdbv3.SavePrunableStep(tx, kv.MinimumPrunableStepDomainKey, 0)
 	// put some kvs
 	data := generateTestData(t, keySize1, keySize2, totalTx, keyTxsLimit, keyLimit)
 	for key, updates := range data {
@@ -1631,9 +1632,7 @@ func TestDomain_PruneAfterAggregation(t *testing.T) {
 func TestPruneProgress(t *testing.T) {
 	t.Parallel()
 
-	db, d := testDbAndDomainOfStep(t, 25, log.New())
-	defer db.Close()
-	defer d.Close()
+	db, _ := testDbAndDomainOfStep(t, 25, log.New())
 
 	latestKey := []byte("682c02b93b63aeb260eccc33705d584ffb5f0d4c")
 
@@ -1641,16 +1640,16 @@ func TestPruneProgress(t *testing.T) {
 		tx, err := db.BeginRw(context.Background())
 		require.NoError(t, err)
 		defer tx.Rollback()
-		err = SaveExecV3PruneProgress(tx, kv.TblAccountVals, latestKey)
+		err = rawdbv3.SavePruneProgress(tx, kv.TblAccountVals, latestKey)
 		require.NoError(t, err)
-		key, err := GetExecV3PruneProgress(tx, kv.TblAccountVals)
+		key, err := rawdbv3.PruneProgress(tx, kv.TblAccountVals)
 		require.NoError(t, err)
 		require.EqualValuesf(t, latestKey, key, "key %x", key)
 
-		err = SaveExecV3PruneProgress(tx, kv.TblAccountVals, nil)
+		err = rawdbv3.SavePruneProgress(tx, kv.TblAccountVals, nil)
 		require.NoError(t, err)
 
-		key, err = GetExecV3PruneProgress(tx, kv.TblAccountVals)
+		key, err = rawdbv3.PruneProgress(tx, kv.TblAccountVals)
 		require.NoError(t, err)
 		require.Nil(t, key)
 	})
@@ -1659,17 +1658,17 @@ func TestPruneProgress(t *testing.T) {
 		tx, err := db.BeginRw(context.Background())
 		require.NoError(t, err)
 		defer tx.Rollback()
-		err = SaveExecV3PruneProgress(tx, kv.TblAccountVals, latestKey)
+		err = rawdbv3.SavePruneProgress(tx, kv.TblAccountVals, latestKey)
 		require.NoError(t, err)
 
-		key, err := GetExecV3PruneProgress(tx, kv.TblAccountVals)
+		key, err := rawdbv3.PruneProgress(tx, kv.TblAccountVals)
 		require.NoError(t, err)
 		require.EqualValues(t, latestKey, key)
 
-		err = SaveExecV3PruneProgress(tx, kv.TblAccountVals, nil)
+		err = rawdbv3.SavePruneProgress(tx, kv.TblAccountVals, nil)
 		require.NoError(t, err)
 
-		key, err = GetExecV3PruneProgress(tx, kv.TblAccountVals)
+		key, err = rawdbv3.PruneProgress(tx, kv.TblAccountVals)
 		require.NoError(t, err)
 		require.Nil(t, key)
 	})
@@ -1679,17 +1678,17 @@ func TestPruneProgress(t *testing.T) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 		expected := []byte{}
-		err = SaveExecV3PruneProgress(tx, kv.TblAccountVals, expected)
+		err = rawdbv3.SavePruneProgress(tx, kv.TblAccountVals, expected)
 		require.NoError(t, err)
 
-		key, err := GetExecV3PruneProgress(tx, kv.TblAccountVals)
+		key, err := rawdbv3.PruneProgress(tx, kv.TblAccountVals)
 		require.NoError(t, err)
 		require.EqualValues(t, expected, key)
 
-		err = SaveExecV3PruneProgress(tx, kv.TblAccountVals, nil)
+		err = rawdbv3.SavePruneProgress(tx, kv.TblAccountVals, nil)
 		require.NoError(t, err)
 
-		key, err = GetExecV3PruneProgress(tx, kv.TblAccountVals)
+		key, err = rawdbv3.PruneProgress(tx, kv.TblAccountVals)
 		require.NoError(t, err)
 		require.Nil(t, key)
 	})
@@ -1768,7 +1767,7 @@ func TestDomain_PruneProgress(t *testing.T) {
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	cancel()
 
-	key, err := GetExecV3PruneProgress(rwTx, dc.d.valsTable)
+	key, err := rawdbv3.PruneProgress(rwTx, dc.d.valsTable)
 	require.NoError(t, err)
 	require.NotNil(t, key)
 
@@ -1794,7 +1793,7 @@ func TestDomain_PruneProgress(t *testing.T) {
 		}
 		cancel()
 
-		key, err := GetExecV3PruneProgress(rwTx, dc.d.valsTable)
+		key, err := rawdbv3.PruneProgress(rwTx, dc.d.valsTable)
 		require.NoError(t, err)
 		if step == 0 && key == nil {
 

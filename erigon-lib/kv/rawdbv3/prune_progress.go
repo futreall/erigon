@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Erigon. If not, see <http://www.gnu.org/licenses/>.
 
-package state
+package rawdbv3
 
 import (
 	"encoding/binary"
@@ -22,9 +22,9 @@ import (
 	"github.com/erigontech/erigon-lib/kv"
 )
 
-// SaveExecV3PruneProgress saves latest pruned key in given table to the database.
+// SavePruneProgress saves latest pruned key in given table to the database.
 // nil key also allowed and means that latest pruning run has been finished.
-func SaveExecV3PruneProgress(db kv.Putter, prunedTblName string, prunedKey []byte) error {
+func SavePruneProgress(db kv.Putter, prunedTblName string, prunedKey []byte) error {
 	empty := make([]byte, 1)
 	if prunedKey != nil {
 		empty[0] = 1
@@ -32,9 +32,9 @@ func SaveExecV3PruneProgress(db kv.Putter, prunedTblName string, prunedKey []byt
 	return db.Put(kv.TblPruningProgress, []byte(prunedTblName), append(empty, prunedKey...))
 }
 
-// GetExecV3PruneProgress retrieves saved progress of given table pruning from the database.
+// PruneProgress retrieves saved progress of given table pruning from the database.
 // For now it is latest pruned key in prunedTblName
-func GetExecV3PruneProgress(db kv.Getter, prunedTblName string) (pruned []byte, err error) {
+func PruneProgress(db kv.Getter, prunedTblName string) (pruned []byte, err error) {
 	v, err := db.GetOne(kv.TblPruningProgress, []byte(prunedTblName))
 	if err != nil {
 		return nil, err
@@ -53,8 +53,8 @@ func GetExecV3PruneProgress(db kv.Getter, prunedTblName string) (pruned []byte, 
 	}
 }
 
-// SaveExecV3PrunableProgress saves latest pruned key in given table to the database.
-func SaveExecV3PrunableProgress(db kv.RwTx, tbl []byte, step uint64) error {
+// SavePrunableStep saves latest pruned key in given table to the database.
+func SavePrunableStep(db kv.RwTx, tbl []byte, step uint64) error {
 	v := make([]byte, 8)
 	binary.BigEndian.PutUint64(v, step)
 	if err := db.Delete(kv.TblPruningProgress, append(kv.MinimumPrunableStepDomainKey, tbl...)); err != nil {
@@ -63,8 +63,8 @@ func SaveExecV3PrunableProgress(db kv.RwTx, tbl []byte, step uint64) error {
 	return db.Put(kv.TblPruningProgress, append(kv.MinimumPrunableStepDomainKey, tbl...), v)
 }
 
-// GetExecV3PrunableProgress retrieves saved progress of given table pruning from the database.
-func GetExecV3PrunableProgress(db kv.Getter, tbl []byte) (step uint64, err error) {
+// PrunableStep retrieves saved progress of given table pruning from the database.
+func PrunableStep(db kv.Getter, tbl []byte) (step uint64, err error) {
 	v, err := db.GetOne(kv.TblPruningProgress, append(kv.MinimumPrunableStepDomainKey, tbl...))
 	if err != nil {
 		return 0, err

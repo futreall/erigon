@@ -33,6 +33,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/erigontech/erigon-lib/kv/rawdbv3"
 	"github.com/erigontech/erigon-lib/metrics"
 	btree2 "github.com/tidwall/btree"
 	"golang.org/x/sync/errgroup"
@@ -2009,7 +2010,7 @@ func (dt *DomainRoTx) canPruneDomainTables(tx kv.Tx, untilTx uint64) (can bool, 
 	if untilTx > 0 {
 		untilStep = (untilTx - 1) / dt.d.aggregationStep
 	}
-	sm, err := GetExecV3PrunableProgress(tx, []byte(dt.d.valsTable))
+	sm, err := rawdbv3.PrunableStep(tx, []byte(dt.d.valsTable))
 	if err != nil {
 		dt.d.logger.Error("get domain pruning progress", "name", dt.d.filenameBase, "error", err)
 		return false, maxStepToPrune
@@ -2119,7 +2120,7 @@ func (dt *DomainRoTx) Prune(ctx context.Context, rwTx kv.RwTx, step, txFrom, txT
 		return valsCursor.(kv.RwCursorDupSort).DeleteExact(k, v)
 	}
 
-	prunedKey, err := GetExecV3PruneProgress(rwTx, dt.d.valsTable)
+	prunedKey, err := rawdbv3.PruneProgress(rwTx, dt.d.valsTable)
 	if err != nil {
 		dt.d.logger.Error("get domain pruning progress", "name", dt.name.String(), "error", err)
 	}
@@ -2153,7 +2154,7 @@ func (dt *DomainRoTx) Prune(ctx context.Context, rwTx kv.RwTx, step, txFrom, txT
 			if err := ancientDomainValsCollector.Load(rwTx, dt.d.valsTable, loadFunc, etl.TransformArgs{Quit: ctx.Done()}); err != nil {
 				return stat, fmt.Errorf("load domain values: %w", err)
 			}
-			if err := SaveExecV3PruneProgress(rwTx, dt.d.valsTable, k); err != nil {
+			if err := rawdbv3.SavePruneProgress(rwTx, dt.d.valsTable, k); err != nil {
 				return stat, fmt.Errorf("save domain pruning progress: %s, %w", dt.name.String(), err)
 			}
 			return stat, nil
@@ -2180,11 +2181,11 @@ func (dt *DomainRoTx) Prune(ctx context.Context, rwTx kv.RwTx, step, txFrom, txT
 	if err := ancientDomainValsCollector.Load(rwTx, dt.d.valsTable, loadFunc, etl.TransformArgs{Quit: ctx.Done()}); err != nil {
 		return stat, fmt.Errorf("load domain values: %w", err)
 	}
-	if err := SaveExecV3PruneProgress(rwTx, dt.d.valsTable, nil); err != nil {
+	if err := rawdbv3.SavePruneProgress(rwTx, dt.d.valsTable, nil); err != nil {
 		return stat, fmt.Errorf("save domain pruning progress: %s, %w", dt.d.filenameBase, err)
 	}
 
-	if err := SaveExecV3PrunableProgress(rwTx, []byte(dt.d.valsTable), step+1); err != nil {
+	if err := rawdbv3.SavePrunableStep(rwTx, []byte(dt.d.valsTable), step+1); err != nil {
 		return stat, err
 	}
 	mxPruneTookDomain.ObserveDuration(st)

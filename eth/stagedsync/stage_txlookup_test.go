@@ -17,7 +17,6 @@
 package stagedsync_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -152,10 +151,6 @@ func TestTxLookup(t *testing.T) {
 	require.NoError(err)
 
 	{
-		tx, err := db.BeginRo(context.Background())
-		require.NoError(err)
-		defer tx.Rollback()
-
 		bn, _ := rawdb.ReadTxLookupEntry(tx, bodies[0].Transactions[0].Hash())
 		require.Equal(1, bn)
 

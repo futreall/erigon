@@ -297,7 +297,7 @@ func deleteTxLookupRange2(tx kv.RwTx, blockFrom, blockTo uint64, ctx context.Con
 		return deleted, done, err
 	}
 	if prunedKey == nil {
-		if blockTo-blockFrom < 100 {
+		if blockTo-blockFrom < 10 {
 			log.Warn("[dbg] skip prune", "blockFrom", blockFrom, "blockTo", blockTo)
 			return
 		}

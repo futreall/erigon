@@ -56,7 +56,7 @@ func TestTxLookup(t *testing.T) {
 
 	// prepare txn so it works with our test
 	signer1 := types.MakeSigner(params.TestChainConfig, params.TestChainConfig.BerlinBlock.Uint64(), 0)
-	header := &types.Header{Number: libcommon.Big1}
+	header := &types.Header{Number: libcommon.Big0}
 	hash := header.Hash()
 	require.NoError(rawdb.WriteHeader(tx, header))
 	bodies := [2]*types.Body{}
@@ -86,11 +86,11 @@ func TestTxLookup(t *testing.T) {
 			}, *signer1),
 		},
 	}
-	require.NoError(rawdb.WriteBody(tx, hash, 1, bodies[0]))
-	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 1))
+	require.NoError(rawdb.WriteBody(tx, hash, 0, bodies[0]))
+	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 0))
 
 	signer2 := types.MakeSigner(params.TestChainConfig, params.TestChainConfig.BerlinBlock.Uint64(), 0)
-	header.Number = libcommon.Big2
+	header.Number = libcommon.Big1
 	hash = header.Hash()
 	require.NoError(rawdb.WriteHeader(tx, header))
 	bodies[1] = &types.Body{
@@ -130,35 +130,38 @@ func TestTxLookup(t *testing.T) {
 			}, *signer2),
 		},
 	}
-	require.NoError(rawdb.WriteBody(tx, hash, 2, bodies[1]))
+	require.NoError(rawdb.WriteBody(tx, hash, 1, bodies[1]))
 
-	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 2))
+	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 1))
 
-	header.Number = libcommon.Big3
+	header.Number = libcommon.Big2
 	hash = header.Hash()
 	require.NoError(rawdb.WriteHeader(tx, header))
-	err = rawdb.WriteBody(tx, hash, 3, &types.Body{
+	err = rawdb.WriteBody(tx, hash, 2, &types.Body{
 		Transactions: []types.Transaction{}, Uncles: []*types.Header{{GasLimit: 3}},
 	})
 	require.NoError(err)
 
-	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 3))
+	require.NoError(rawdb.WriteCanonicalHash(tx, hash, 2))
 
-	require.NoError(stages.SaveStageProgress(tx, stages.Bodies, 3))
+	require.NoError(stages.SaveStageProgress(tx, stages.Bodies, 2))
 
 	cfg := stagedsync.StageTxLookupCfg(db, prune.DefaultMode, "", nil, br)
-	err = stagedsync.SpawnTxLookup(&stagedsync.StageState{ID: stages.TxLookup}, tx, 3, cfg, m.Ctx, log.New())
+	err = stagedsync.SpawnTxLookup(&stagedsync.StageState{ID: stages.TxLookup}, tx, 2, cfg, m.Ctx, log.New())
 	require.NoError(err)
 
 	{
 		bn, _ := rawdb.ReadTxLookupEntry(tx, bodies[0].Transactions[0].Hash())
-		require.Equal(1, bn)
+		require.Equal(1, *bn)
 
 		bn, _ = rawdb.ReadTxLookupEntry(tx, bodies[1].Transactions[1].Hash())
-		require.Equal(2, bn)
+		require.Equal(2, *bn)
 	}
 
+	err = stagedsync.PruneTxLookup(&stagedsync.PruneState{ID: stages.TxLookup}, tx, cfg, m.Ctx, log.New())
+	require.NoError(err)
 	{
-
+		//bn, _ := rawdb.ReadTxLookupEntry(tx, bodies[0].Transactions[0].Hash())
+		//require.Equal(1, bn)
 	}
 }

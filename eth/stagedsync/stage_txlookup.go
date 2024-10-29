@@ -20,16 +20,17 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"math/big"
 	"time"
-
-	"github.com/erigontech/erigon-lib/log/v3"
 
 	"github.com/erigontech/erigon-lib/chain"
 	libcommon "github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/hexutility"
 	"github.com/erigontech/erigon-lib/etl"
 	"github.com/erigontech/erigon-lib/kv"
+	"github.com/erigontech/erigon-lib/kv/rawdbv3"
+	"github.com/erigontech/erigon-lib/log/v3"
 	"github.com/erigontech/erigon/core/rawdb"
 	"github.com/erigontech/erigon/ethdb/prune"
 	"github.com/erigontech/erigon/polygon/bor/borcfg"
@@ -255,24 +256,21 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 	// can't prune much here: because tx_lookup index has crypto-hashed-keys, and 1 block producing hundreds of deletes
 	blockTo = min(blockTo, blockFrom+10)
 
+	pruneLimit := 10_000
 	pruneTimeout := 250 * time.Millisecond
 	if s.CurrentSyncCycle.IsInitialCycle {
+		pruneLimit = math.MaxInt
 		pruneTimeout = time.Hour
 	}
 
 	if blockFrom < blockTo {
 		t := time.Now()
-		deletedTotal := 0
-		for bn := blockFrom; bn < blockTo; bn++ {
-			deleted, err := deleteTxLookupRange(tx, logPrefix, bn, bn+1, ctx, cfg, logger)
-			if err != nil {
-				return fmt.Errorf("prune TxLookUp: %w", err)
-			}
-			deletedTotal += deleted
-
-			if time.Since(t) > pruneTimeout {
-				break
-			}
+		deleted, err := deleteTxLookupRange2(tx, blockTo, ctx, pruneLimit, pruneTimeout)
+		if err != nil {
+			return fmt.Errorf("prune TxLookUp: %w", err)
+		}
+		if time.Since(t) > pruneTimeout {
+			log.Warn("[dbg] TxLookup", "pruned_txs", deleted, "took", time.Since(t), "cfg.prune.History.Enabled()", cfg.prune.History.Enabled(), "cfg.prune.History.PruneTo(s.ForwardProgress)", cfg.prune.History.PruneTo(s.ForwardProgress), "cfg.blockReader.CanPruneTo(s.ForwardProgress)", cfg.blockReader.CanPruneTo(s.ForwardProgress))
 		}
 
 		if cfg.borConfig != nil && pruneBor {
@@ -294,7 +292,57 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 	return nil
 }
 
-// deleteTxLookupRange - [blockFrom, blockTo)
+// deleteTxLookupRange2 - [blockFrom, blockTo)
+func deleteTxLookupRange2(tx kv.RwTx, blockTo uint64, ctx context.Context, limit int, timeout time.Duration) (deleted int, err error) {
+	t := time.Now()
+	prunedKey, err := rawdbv3.PruneProgress(tx, kv.TxLookup)
+	if err != nil {
+		return deleted, err
+	}
+	c, err := tx.RwCursor(kv.TxLookup)
+	if err != nil {
+		return deleted, err
+	}
+	defer c.Close()
+
+	var k, v []byte
+	for k, v, err = c.Seek(prunedKey); k != nil; k, v, err = c.Next() {
+		if err != nil {
+			return deleted, err
+		}
+		bn := ^binary.BigEndian.Uint64(v)
+		if bn >= blockTo {
+			continue
+		}
+		if err := c.DeleteCurrent(); err != nil {
+			return deleted, err
+		}
+		deleted++
+		limit--
+
+		if limit == 0 {
+			break
+		}
+
+		if limit%100 == 0 {
+			select {
+			case <-ctx.Done():
+				return deleted, ctx.Err()
+			default:
+			}
+
+			if time.Since(t) > timeout {
+				break
+			}
+		}
+	}
+
+	if err := rawdbv3.SavePruneProgress(tx, kv.TxLookup, k); err != nil {
+		return deleted, err
+	}
+	return deleted, nil
+}
+
 func deleteTxLookupRange(tx kv.RwTx, logPrefix string, blockFrom, blockTo uint64, ctx context.Context, cfg TxLookupCfg, logger log.Logger) (deleted int, err error) {
 	err = etl.Transform(logPrefix, tx, kv.HeaderCanonical, kv.TxLookup, cfg.tmpdir, func(k, v []byte, next etl.ExtractNextFunc) error {
 		blocknum, blockHash := binary.BigEndian.Uint64(k), libcommon.CastToHash(v)

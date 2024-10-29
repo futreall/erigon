@@ -150,10 +150,10 @@ func TestTxLookup(t *testing.T) {
 	require.NoError(err)
 
 	{
-		bn, _ := rawdb.ReadTxLookupEntry(tx, bodies[0].Transactions[0].Hash())
+		bn, _ := rawdb.ReadTxLookupEntry(tx, bodies[1].Transactions[1].Hash())
 		require.Equal(1, *bn)
 
-		bn, _ = rawdb.ReadTxLookupEntry(tx, bodies[1].Transactions[1].Hash())
+		bn, _ = rawdb.ReadTxLookupEntry(tx, bodies[2].Transactions[2].Hash())
 		require.Equal(2, *bn)
 	}
 

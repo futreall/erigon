@@ -93,7 +93,7 @@ func TestTxLookup(t *testing.T) {
 	header.Number = libcommon.Big2
 	hash = header.Hash()
 	require.NoError(rawdb.WriteHeader(tx, header))
-	bodies[1] = &types.Body{
+	bodies[2] = &types.Body{
 		Transactions: []types.Transaction{
 			mustSign(&types.AccessListTx{
 				LegacyTx: types.LegacyTx{

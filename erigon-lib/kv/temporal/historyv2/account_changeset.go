@@ -32,3 +32,20 @@ func DecodeAccounts(dbKey, dbValue []byte) (uint64, []byte, []byte, error) {
 	v := dbValue[length.Addr:]
 	return blockN, k, v, nil
 }
+
+func DecodeStorage(dbKey, dbValue []byte) (uint64, []byte, []byte, error) {
+	blockN := binary.BigEndian.Uint64(dbKey)
+	if len(dbValue) < length.Hash {
+		return 0, nil, nil, fmt.Errorf("storage changes purged for block %d", blockN)
+	}
+	k := make([]byte, length.Addr+length.Incarnation+length.Hash)
+	dbKey = dbKey[length.BlockNum:] // remove BlockN bytes
+	copy(k, dbKey)
+	copy(k[len(dbKey):], dbValue[:length.Hash])
+	v := dbValue[length.Hash:]
+	if len(v) == 0 {
+		v = nil
+	}
+
+	return blockN, k, v, nil
+}

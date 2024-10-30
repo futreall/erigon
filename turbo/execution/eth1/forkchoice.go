@@ -566,17 +566,23 @@ func (e *EthereumExecutionModule) runPostForkchoiceInBackground(initialCycle boo
 	}
 	go func() {
 		defer e.doingPostForkchoice.Store(false)
-		var timings []interface{}
 		// Wait for semaphore to be available
 		if e.semaphore.Acquire(e.bacgroundCtx, 1) != nil {
 			return
 		}
 		defer e.semaphore.Release(1)
+
+		var timings []interface{}
+		t := time.Now()
 		if err := e.db.Update(e.bacgroundCtx, func(tx kv.RwTx) error {
 			if err := e.executionPipeline.RunPrune(e.db, tx, initialCycle); err != nil {
 				return err
 			}
 			if pruneTimings := e.executionPipeline.PrintTimings(); len(pruneTimings) > 0 {
+				if casted, ok := tx.(kv.HasSpaceDirty); ok {
+					dirt, _, _ := casted.SpaceDirty()
+					timings = append(timings, "dirty_space", datasize.ByteSize(dirt).String())
+				}
 				timings = append(timings, pruneTimings...)
 			}
 			return nil
@@ -585,6 +591,7 @@ func (e *EthereumExecutionModule) runPostForkchoiceInBackground(initialCycle boo
 			return
 		}
 		if len(timings) > 0 {
+			timings = append(timings, "total", time.Since(t)) // include fsync
 			e.logger.Info("Timings: Post-Forkchoice (slower than 50ms)", timings...)
 		}
 	}()

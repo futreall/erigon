@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/dbg"
 	"github.com/erigontech/erigon-lib/common/metrics"
@@ -579,6 +580,10 @@ func (e *EthereumExecutionModule) runPostForkchoiceInBackground(initialCycle boo
 				return err
 			}
 			if pruneTimings := e.executionPipeline.PrintTimings(); len(pruneTimings) > 0 {
+				if casted, ok := tx.(kv.HasSpaceDirty); ok {
+					dirt, _, _ := casted.SpaceDirty()
+					timings = append(timings, "dirty_space", datasize.ByteSize(dirt).String())
+				}
 				timings = append(timings, pruneTimings...)
 			}
 			return nil

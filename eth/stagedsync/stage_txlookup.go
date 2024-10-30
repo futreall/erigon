@@ -262,28 +262,26 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 
 	if blockFrom < blockTo {
 		t := time.Now()
+		var pruneBlockNum = blockFrom
 		deletedTotal := 0
-		var bn = blockFrom
-		for ; bn < blockTo; bn++ {
-			deleted, err := deleteTxLookupRange(tx, logPrefix, bn, bn+1, ctx, cfg, logger)
+		for ; pruneBlockNum < blockTo; pruneBlockNum++ {
+			deleted, err := deleteTxLookupRange(tx, logPrefix, pruneBlockNum, pruneBlockNum+1, ctx, cfg, logger)
 			if err != nil {
 				return fmt.Errorf("prune TxLookUp: %w", err)
 			}
 			deletedTotal += deleted
+			if cfg.borConfig != nil && pruneBor {
+				if err = deleteBorTxLookupRange(tx, logPrefix, pruneBlockNum, pruneBlockNum+1, ctx, cfg, logger); err != nil {
+					return fmt.Errorf("prune BorTxLookUp: %w", err)
+				}
+			}
+			log.Warn("[dbg] TxLookup", "pruned_blks", pruneBlockNum-blockFrom+1, "pruned_txs", deletedTotal, "took", time.Since(t), "cfg.prune.History.Enabled()", cfg.prune.History.Enabled(), "cfg.prune.History.PruneTo(s.ForwardProgress)", cfg.prune.History.PruneTo(s.ForwardProgress), "cfg.blockReader.CanPruneTo(s.ForwardProgress)", cfg.blockReader.CanPruneTo(s.ForwardProgress))
 
 			if time.Since(t) > pruneTimeout {
 				break
 			}
 		}
-		log.Warn("[dbg] TxLookup", "pruned_blks", bn-blockFrom+1, "pruned_txs", deletedTotal, "took", time.Since(t), "cfg.prune.History.Enabled()", cfg.prune.History.Enabled(), "cfg.prune.History.PruneTo(s.ForwardProgress)", cfg.prune.History.PruneTo(s.ForwardProgress), "cfg.blockReader.CanPruneTo(s.ForwardProgress)", cfg.blockReader.CanPruneTo(s.ForwardProgress))
-
-		if cfg.borConfig != nil && pruneBor {
-			if err = deleteBorTxLookupRange(tx, logPrefix, blockFrom, blockTo, ctx, cfg, logger); err != nil {
-				return fmt.Errorf("prune BorTxLookUp: %w", err)
-			}
-		}
-
-		if err = s.DoneAt(tx, bn); err != nil {
+		if err = s.DoneAt(tx, pruneBlockNum); err != nil {
 			return err
 		}
 	} else {
@@ -312,6 +310,7 @@ func deleteTxLookupRange(tx kv.RwTx, logPrefix string, blockFrom, blockTo uint64
 		}
 
 		for _, txn := range body.Transactions {
+			deleted++
 			if err := next(k, txn.Hash().Bytes(), nil); err != nil {
 				return err
 			}
@@ -327,7 +326,7 @@ func deleteTxLookupRange(tx kv.RwTx, logPrefix string, blockFrom, blockTo uint64
 		},
 	}, logger)
 	if err != nil {
-		return 0, err
+		return deleted, err
 	}
 	return deleted, nil
 }

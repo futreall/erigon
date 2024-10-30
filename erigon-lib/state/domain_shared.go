@@ -432,45 +432,40 @@ func (sd *SharedDomains) SizeEstimate() uint64 {
 	return uint64(sd.estSize) * 4
 }
 
+var globalDur time.Duration = 0
+var globalDur2 time.Duration = 0
+
 func (sd *SharedDomains) LatestCommitment(prefix []byte) ([]byte, uint64, error) {
 	if v, prevStep, ok := sd.get(kv.CommitmentDomain, prefix); ok {
 		// sd cache values as is (without transformation) so safe to return
 		return v, prevStep, nil
 	}
-
-	var (
-		vFiles  []byte
-		startTx uint64
-		endTx   uint64
-	)
-	errCh := make(chan error)
-
-	go func() {
-		var err error
-		// getFromFiles doesn't provide same semantics as getLatestFromDB - it returns start/end tx
-		// of file where the value is stored (not exact step when kv has been set)
-		vFiles, _, startTx, endTx, err = sd.aggTx.d[kv.CommitmentDomain].getFromFiles(prefix, 0)
-		errCh <- err
-	}()
-
+	a := time.Now()
 	v, step, found, err := sd.aggTx.d[kv.CommitmentDomain].getLatestFromDb(prefix, sd.roTx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("commitment prefix %x read error: %w", prefix, err)
 	}
+	globalDur += time.Since(a)
 	if found {
 		// db store values as is (without transformation) so safe to return
 		return v, step, nil
 	}
-	if err := <-errCh; err != nil {
+	a = time.Now()
+
+	// getFromFiles doesn't provide same semantics as getLatestFromDB - it returns start/end tx
+	// of file where the value is stored (not exact step when kv has been set)
+	v, _, startTx, endTx, err := sd.aggTx.d[kv.CommitmentDomain].getFromFiles(prefix, 0)
+	if err != nil {
 		return nil, 0, fmt.Errorf("commitment prefix %x read error: %w", prefix, err)
 	}
-
+	globalDur2 += time.Since(a)
+	fmt.Println(globalDur, globalDur2)
 	if !sd.aggTx.a.commitmentValuesTransform || bytes.Equal(prefix, keyCommitmentState) {
 		return v, endTx / sd.aggTx.a.StepSize(), nil
 	}
 
 	// replace shortened keys in the branch with full keys to allow HPH work seamlessly
-	rv, err := sd.replaceShortenedKeysInBranch(prefix, commitment.BranchData(vFiles), startTx, endTx)
+	rv, err := sd.replaceShortenedKeysInBranch(prefix, commitment.BranchData(v), startTx, endTx)
 	if err != nil {
 		return nil, 0, err
 	}

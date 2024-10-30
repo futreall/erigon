@@ -87,7 +87,7 @@ type GetPayloadResponse struct {
 	ExecutionPayload      *ExecutionPayload `json:"executionPayload" gencodec:"required"`
 	BlockValue            *hexutil.Big      `json:"blockValue"`
 	BlobsBundle           *BlobsBundleV1    `json:"blobsBundle"`
-	ExecutionRequests     [][]byte          `json:"executionRequests"`
+	ExecutionRequests     []hexutility.Bytes          `json:"executionRequests"`
 	ShouldOverrideBuilder bool              `json:"shouldOverrideBuilder"`
 }
 

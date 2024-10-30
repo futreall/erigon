@@ -23,6 +23,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/erigontech/erigon-lib/log/v3"
 
 	"github.com/erigontech/erigon-lib/chain"
@@ -212,7 +213,7 @@ func UnwindTxLookup(u *UnwindState, s *StageState, tx kv.RwTx, cfg TxLookupCfg, 
 	blockFrom, blockTo = max(blockFrom, smallestInDB), max(blockTo, smallestInDB)
 
 	// etl.Transform uses ExtractEndKey as exclusive bound, therefore blockTo + 1
-	if err := deleteTxLookupRange(tx, s.LogPrefix(), blockFrom, blockTo+1, ctx, cfg, logger); err != nil {
+	if _, err := deleteTxLookupRange(tx, s.LogPrefix(), blockFrom, blockTo+1, ctx, cfg, logger); err != nil {
 		return fmt.Errorf("unwind TxLookUp: %w", err)
 	}
 	if cfg.borConfig != nil {
@@ -261,24 +262,32 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 	}
 
 	if blockFrom < blockTo {
+		var deletedTotal int
+		var dirtyBefore, dirtyAfter datasize.ByteSize
+		if casted, ok := tx.(kv.HasSpaceDirty); ok {
+			dirt, _, _ := casted.SpaceDirty()
+			dirtyBefore = datasize.ByteSize(dirt)
+		}
 		t := time.Now()
-		var pruneBlockNum = blockFrom
-		for ; pruneBlockNum < blockTo; pruneBlockNum++ {
-			err = deleteTxLookupRange(tx, logPrefix, pruneBlockNum, pruneBlockNum+1, ctx, cfg, logger)
-			if err != nil {
-				return fmt.Errorf("prune TxLookUp: %w", err)
-			}
-			if cfg.borConfig != nil && pruneBor {
-				if err = deleteBorTxLookupRange(tx, logPrefix, pruneBlockNum, pruneBlockNum+1, ctx, cfg, logger); err != nil {
-					return fmt.Errorf("prune BorTxLookUp: %w", err)
-				}
-			}
-
-			if time.Since(t) > pruneTimeout {
-				break
+		pruneTimeout = time.Hour // hack pruning at non-chain-tip
+		_ = pruneTimeout
+		deleted, err := deleteTxLookupRange(tx, logPrefix, blockFrom, blockTo, ctx, cfg, logger)
+		if err != nil {
+			return fmt.Errorf("prune TxLookUp: %w", err)
+		}
+		deletedTotal += deleted
+		if cfg.borConfig != nil && pruneBor {
+			if err = deleteBorTxLookupRange(tx, logPrefix, blockFrom, blockTo, ctx, cfg, logger); err != nil {
+				return fmt.Errorf("prune BorTxLookUp: %w", err)
 			}
 		}
-		if err = s.DoneAt(tx, pruneBlockNum); err != nil {
+
+		if casted, ok := tx.(kv.HasSpaceDirty); ok {
+			dirt, _, _ := casted.SpaceDirty()
+			dirtyAfter = datasize.ByteSize(dirt)
+		}
+		log.Warn("[dbg] TxLookup", "dirty_before", dirtyBefore.String(), "dirty_after", dirtyAfter.String(), "pruned_blks", blockTo-blockFrom, "pruned_txs", deletedTotal, "took", time.Since(t), "cfg.prune.History.Enabled()", cfg.prune.History.Enabled(), "cfg.prune.History.PruneTo(s.ForwardProgress)", cfg.prune.History.PruneTo(s.ForwardProgress), "cfg.blockReader.CanPruneTo(s.ForwardProgress)", cfg.blockReader.CanPruneTo(s.ForwardProgress))
+		if err = s.DoneAt(tx, blockTo); err != nil {
 			return err
 		}
 	}
@@ -292,7 +301,7 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 }
 
 // deleteTxLookupRange - [blockFrom, blockTo)
-func deleteTxLookupRange(tx kv.RwTx, logPrefix string, blockFrom, blockTo uint64, ctx context.Context, cfg TxLookupCfg, logger log.Logger) (err error) {
+func deleteTxLookupRange(tx kv.RwTx, logPrefix string, blockFrom, blockTo uint64, ctx context.Context, cfg TxLookupCfg, logger log.Logger) (deleted int, err error) {
 	err = etl.Transform(logPrefix, tx, kv.HeaderCanonical, kv.TxLookup, cfg.tmpdir, func(k, v []byte, next etl.ExtractNextFunc) error {
 		blocknum, blockHash := binary.BigEndian.Uint64(k), libcommon.CastToHash(v)
 		body, err := cfg.blockReader.BodyWithTransactions(ctx, tx, blockHash, blocknum)
@@ -305,6 +314,7 @@ func deleteTxLookupRange(tx kv.RwTx, logPrefix string, blockFrom, blockTo uint64
 		}
 
 		for _, txn := range body.Transactions {
+			deleted++
 			if err := next(k, txn.Hash().Bytes(), nil); err != nil {
 				return err
 			}
@@ -320,9 +330,9 @@ func deleteTxLookupRange(tx kv.RwTx, logPrefix string, blockFrom, blockTo uint64
 		},
 	}, logger)
 	if err != nil {
-		return err
+		return deleted, err
 	}
-	return nil
+	return deleted, nil
 }
 
 // deleteTxLookupRange - [blockFrom, blockTo)

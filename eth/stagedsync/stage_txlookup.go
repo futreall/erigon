@@ -264,7 +264,7 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 
 	if blockFrom < blockTo {
 		var dirtyBefore, dirtyAfter datasize.ByteSize
-		if casted, ok := tx.(*mdbx.MdbxTx); ok {
+		if casted, ok := tx.(kv.HasSpaceDirty); ok {
 			dirt, _, _ := casted.SpaceDirty()
 			dirtyBefore = datasize.ByteSize(dirt)
 		}
@@ -287,7 +287,7 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 				break
 			}
 		}
-		if casted, ok := tx.(*mdbx.MdbxTx); ok {
+		if casted, ok := tx.((kv.HasSpaceDirty); ok {
 			dirt, _, _ := casted.SpaceDirty()
 			dirtyAfter = datasize.ByteSize(dirt)
 		}

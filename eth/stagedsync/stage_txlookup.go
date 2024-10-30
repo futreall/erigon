@@ -23,6 +23,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/c2h5oh/datasize"
+	"github.com/erigontech/erigon-lib/kv/mdbx"
 	"github.com/erigontech/erigon-lib/log/v3"
 
 	"github.com/erigontech/erigon-lib/chain"
@@ -261,6 +263,11 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 	}
 
 	if blockFrom < blockTo {
+		var dirtyBefore, dirtyAfter datasize.ByteSize
+		if casted, ok := tx.(*mdbx.MdbxTx); ok {
+			dirt, _, _ := casted.SpaceDirty()
+			dirtyBefore = datasize.ByteSize(dirt)
+		}
 		t := time.Now()
 		var pruneBlockNum = blockFrom
 		deletedTotal := 0
@@ -280,7 +287,11 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 				break
 			}
 		}
-		log.Warn("[dbg] TxLookup", "pruned_blks", pruneBlockNum-blockFrom+1, "pruned_txs", deletedTotal, "took", time.Since(t), "cfg.prune.History.Enabled()", cfg.prune.History.Enabled(), "cfg.prune.History.PruneTo(s.ForwardProgress)", cfg.prune.History.PruneTo(s.ForwardProgress), "cfg.blockReader.CanPruneTo(s.ForwardProgress)", cfg.blockReader.CanPruneTo(s.ForwardProgress))
+		if casted, ok := tx.(*mdbx.MdbxTx); ok {
+			dirt, _, _ := casted.SpaceDirty()
+			dirtyAfter = datasize.ByteSize(dirt)
+		}
+		log.Warn("[dbg] TxLookup", "dirty_before", dirtyBefore.String(), "dirty_after", dirtyAfter.String(), "pruned_blks", pruneBlockNum-blockFrom+1, "pruned_txs", deletedTotal, "took", time.Since(t), "cfg.prune.History.Enabled()", cfg.prune.History.Enabled(), "cfg.prune.History.PruneTo(s.ForwardProgress)", cfg.prune.History.PruneTo(s.ForwardProgress), "cfg.blockReader.CanPruneTo(s.ForwardProgress)", cfg.blockReader.CanPruneTo(s.ForwardProgress))
 		if err = s.DoneAt(tx, pruneBlockNum); err != nil {
 			return err
 		}

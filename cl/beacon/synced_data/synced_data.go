@@ -17,8 +17,10 @@
 package synced_data
 
 import (
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon/cl/abstract"
@@ -26,23 +28,27 @@ import (
 	"github.com/erigontech/erigon/cl/phase1/core/state"
 )
 
+const EnableDeadlockDetector = false
+
 var _ SyncedData = (*SyncedDataManager)(nil)
 
 type SyncedDataManager struct {
-	enabled   bool
-	cfg       *clparams.BeaconChainConfig
-	headState atomic.Value
-	headRoot  atomic.Value
+	enabled bool
+	cfg     *clparams.BeaconChainConfig
 
-	copyBuffer      *state.CachingBeaconState
-	copyBufferMutex sync.Mutex
+	headRoot atomic.Value
+	headSlot atomic.Uint64
+
+	headState *state.CachingBeaconState
+
+	mu              sync.RWMutex
+	isTryingToWrite atomic.Bool
 }
 
 func NewSyncedDataManager(enabled bool, cfg *clparams.BeaconChainConfig) *SyncedDataManager {
 	return &SyncedDataManager{
-		enabled:    enabled,
-		cfg:        cfg,
-		copyBuffer: state.New(cfg),
+		enabled: enabled,
+		cfg:     cfg,
 	}
 }
 
@@ -50,73 +56,95 @@ func (s *SyncedDataManager) OnHeadState(newState *state.CachingBeaconState) (err
 	if !s.enabled {
 		return
 	}
-	s.copyBufferMutex.Lock()
-	defer s.copyBufferMutex.Unlock()
-	newPtr := s.copyBuffer
-	if err := newState.CopyInto(newPtr); err != nil {
-		return err
+	s.isTryingToWrite.Store(true)
+	defer func() {
+		s.isTryingToWrite.Store(false)
+	}()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var blkRoot common.Hash
+
+	if s.headState == nil {
+		s.headState, err = newState.Copy()
+	} else {
+		err = newState.CopyInto(s.headState)
 	}
-	blkRoot, err := newState.BlockRoot()
 	if err != nil {
 		return err
 	}
-	s.headRoot.Store(common.Hash(blkRoot))
-	curPtr, ok := s.headState.Load().(*state.CachingBeaconState)
-	if !ok {
-		// No head state yet
-		s.headState.Store(newPtr)
-		s.copyBuffer = state.New(s.cfg) // acquire new buffer
-		return
+	blkRoot, err = newState.BlockRoot()
+	if err != nil {
+		return err
 	}
-
-	// swap buffers
-	s.headState.Store(newPtr)
-	s.copyBuffer = curPtr
-	return
+	s.headSlot.Store(newState.Slot())
+	s.headRoot.Store(blkRoot)
+	return err
 }
 
-func (s *SyncedDataManager) HeadState() *state.CachingBeaconState {
-	if !s.enabled {
-		return nil
+func (s *SyncedDataManager) waitUntilNotWriting() {
+	for {
+		if !s.isTryingToWrite.Load() {
+			return
+		}
+		time.Sleep(100 * time.Microsecond)
 	}
-	if ret, ok := s.headState.Load().(*state.CachingBeaconState); ok {
-		return ret
-	}
-	return nil
 }
 
-func (s *SyncedDataManager) HeadStateReader() abstract.BeaconStateReader {
-	headstate := s.HeadState()
-	if headstate == nil {
-		return nil
+func EmptyCancel() {}
+
+func (s *SyncedDataManager) HeadState() (*state.CachingBeaconState, CancelFn) {
+	s.waitUntilNotWriting()
+	_, synced := s.headRoot.Load().(common.Hash)
+	if !s.enabled || !synced {
+		return nil, EmptyCancel
 	}
-	return headstate
+	isCanceled := false
+	var mu sync.Mutex
+
+	st := debug.Stack()
+
+	ch := make(chan struct{})
+	if EnableDeadlockDetector {
+		go func() {
+			select {
+			case <-ch:
+				return
+			case <-time.After(100 * time.Second):
+				panic(string(st))
+			}
+		}()
+	}
+
+	s.mu.RLock()
+	return s.headState, func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if isCanceled {
+			return
+		}
+		if EnableDeadlockDetector {
+			ch <- struct{}{}
+		}
+		isCanceled = true
+		s.mu.RUnlock()
+	}
 }
 
-func (s *SyncedDataManager) HeadStateMutator() abstract.BeaconStateMutator {
-	headstate := s.HeadState()
-	if headstate == nil {
-		return nil
-	}
-	return headstate
+func (s *SyncedDataManager) HeadStateReader() (abstract.BeaconStateReader, CancelFn) {
+	return s.HeadState()
 }
 
 func (s *SyncedDataManager) Syncing() bool {
-	if !s.enabled {
-		return false
-	}
-	return s.headState.Load() == nil
+	_, synced := s.headRoot.Load().(common.Hash)
+	return !synced
 }
 
 func (s *SyncedDataManager) HeadSlot() uint64 {
 	if !s.enabled {
 		return 0
 	}
-	st, ok := s.headState.Load().(*state.CachingBeaconState)
-	if !ok {
-		return 0
-	}
-	return st.Slot()
+	return s.headSlot.Load()
 }
 
 func (s *SyncedDataManager) HeadRoot() common.Hash {

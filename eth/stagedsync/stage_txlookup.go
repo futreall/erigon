@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/c2h5oh/datasize"
-	"github.com/erigontech/erigon-lib/kv/mdbx"
 	"github.com/erigontech/erigon-lib/log/v3"
 
 	"github.com/erigontech/erigon-lib/chain"
@@ -287,7 +286,7 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 				break
 			}
 		}
-		if casted, ok := tx.((kv.HasSpaceDirty); ok {
+		if casted, ok := tx.(kv.HasSpaceDirty); ok {
 			dirt, _, _ := casted.SpaceDirty()
 			dirtyAfter = datasize.ByteSize(dirt)
 		}

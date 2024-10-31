@@ -194,6 +194,7 @@ func (e *EthereumExecutionModule) updateForkChoice(ctx context.Context, original
 	//}
 	defer e.forkValidator.ClearWithUnwind(e.accumulator, e.stateChangeConsumer)
 
+	t := time.Now()
 	// Update the last new block seen.
 	// This is used by eth_syncing as an heuristic to determine if the node is syncing or not.
 	if err := e.db.Update(ctx, func(tx kv.RwTx) error {
@@ -209,6 +210,7 @@ func (e *EthereumExecutionModule) updateForkChoice(ctx context.Context, original
 		sendForkchoiceErrorWithoutWaiting(e.logger, outcomeCh, err, false)
 		return
 	}
+	log.Warn("[dbg] took WriteLastNewBlockSeen+commit", "took", time.Since(t))
 
 	var validationError string
 	type canonicalEntry struct {

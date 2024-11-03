@@ -463,7 +463,7 @@ func (s *EngineServer) getPayload(ctx context.Context, payloadId uint64, version
 	if version >= clparams.ElectraVersion {
 		executionRequests = make([]hexutility.Bytes, len(types.KnownRequestTypes))
 		for i := 0; i < len(types.KnownRequestTypes); i++ {
-			if len(data.Requests.Requests) < i + 1 || data.Requests.Requests[i] ==  nil{
+			if len(data.Requests.Requests) < i+1 || data.Requests.Requests[i] == nil {
 				executionRequests[i] = make(hexutility.Bytes, 0)
 			} else {
 				executionRequests[i] = data.Requests.Requests[i]

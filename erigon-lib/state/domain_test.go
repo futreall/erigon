@@ -1395,8 +1395,8 @@ func TestDomain_GetAfterAggregation(t *testing.T) {
 	defer tx.Rollback()
 
 	d.historyLargeValues = false
-	d.History.compression = seg.CompressKeys | seg.CompressVals
-	d.compression = seg.CompressKeys | seg.CompressVals
+	d.History.compression = seg.CompressNone //seg.CompressKeys | seg.CompressVals
+	d.compression = seg.CompressNone         //seg.CompressKeys | seg.CompressVals
 	d.filenameBase = kv.FileCommitmentDomain
 
 	dc := d.BeginFilesRo()
@@ -1404,8 +1404,8 @@ func TestDomain_GetAfterAggregation(t *testing.T) {
 	writer := dc.NewWriter()
 	defer writer.close()
 
-	keySize1 := uint64(length.Addr)
-	keySize2 := uint64(length.Addr + length.Hash)
+	keySize1 := uint64(length.Addr) / 4
+	keySize2 := uint64(length.Addr+length.Hash) / 4
 	totalTx := uint64(3000)
 	keyTxsLimit := uint64(50)
 	keyLimit := uint64(200)
@@ -1469,8 +1469,8 @@ func TestDomain_CanPruneAfterAggregation(t *testing.T) {
 	defer tx.Rollback()
 
 	d.historyLargeValues = false
-	d.History.compression = seg.CompressKeys | seg.CompressVals
-	d.compression = seg.CompressKeys | seg.CompressVals
+	d.History.compression = seg.CompressNone //seg.CompressKeys | seg.CompressVals
+	d.compression = seg.CompressNone         //seg.CompressKeys | seg.CompressVals
 	d.filenameBase = kv.FileCommitmentDomain
 
 	dc := d.BeginFilesRo()
@@ -1478,8 +1478,8 @@ func TestDomain_CanPruneAfterAggregation(t *testing.T) {
 	writer := dc.NewWriter()
 	defer writer.close()
 
-	keySize1 := uint64(length.Addr)
-	keySize2 := uint64(length.Addr + length.Hash)
+	keySize1 := uint64(length.Addr) / 4
+	keySize2 := uint64(length.Addr+length.Hash) / 4
 	totalTx := uint64(5000)
 	keyTxsLimit := uint64(50)
 	keyLimit := uint64(200)
@@ -1708,16 +1708,16 @@ func TestDomain_PruneProgress(t *testing.T) {
 	defer rwTx.Rollback()
 
 	d.historyLargeValues = false
-	d.History.compression = seg.CompressKeys | seg.CompressVals
-	d.compression = seg.CompressKeys | seg.CompressVals
+	d.History.compression = seg.CompressNone //seg.CompressKeys | seg.CompressVals
+	d.compression = seg.CompressNone         //seg.CompressKeys | seg.CompressVals
 
 	dc := d.BeginFilesRo()
 	defer dc.Close()
 	writer := dc.NewWriter()
 	defer writer.close()
 
-	keySize1 := uint64(length.Addr)
-	keySize2 := uint64(length.Addr + length.Hash)
+	keySize1 := uint64(length.Addr) / 4
+	keySize2 := uint64(length.Addr+length.Hash) / 4
 	totalTx := uint64(5000)
 	keyTxsLimit := uint64(150)
 	keyLimit := uint64(2000)
@@ -2262,8 +2262,8 @@ func TestDomainContext_findShortenedKey(t *testing.T) {
 	writer := dc.NewWriter()
 	defer writer.close()
 
-	keySize1 := uint64(length.Addr)
-	keySize2 := uint64(length.Addr + length.Hash)
+	keySize1 := uint64(length.Addr) / 4
+	keySize2 := uint64(length.Addr+length.Hash) / 4
 	totalTx := uint64(5000)
 	keyTxsLimit := uint64(50)
 	keyLimit := uint64(200)

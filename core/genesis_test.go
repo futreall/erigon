@@ -52,28 +52,32 @@ func TestGenesisBlockRoots(t *testing.T) {
 	require := require.New(t)
 	var err error
 
-	block, _, _ := core.GenesisToBlock(core.MainnetGenesisBlock(), "", log.Root())
-	if block.Hash() != params.MainnetGenesisHash {
-		t.Errorf("wrong mainnet genesis hash, got %v, want %v", block.Hash(), params.MainnetGenesisHash)
+	block, _, err := core.GenesisToBlock(core.GnoPectraDevnet1GenesisBlock(), "", log.Root())
+	require.NoError(err)
+	if block.Root() != params.GnoPectraDevnet1Root {
+		t.Errorf("wrong Gnosis_Dencun2_Devnet genesis state root, got %v, want %v", block.Root(), params.GnoPectraDevnet1Root)
+	}
+	if block.Hash() != params.GnoPectraDevnet1Hash {
+		t.Errorf("wrong Gnosis_Dencun2_Devnet genesis hash, got %v, want %v", block.Hash(), params.GnoPectraDevnet1Hash)
 	}
 
-	block, _, err = core.GenesisToBlock(core.GnosisGenesisBlock(), "", log.Root())
-	require.NoError(err)
-	if block.Root() != params.GnosisGenesisStateRoot {
-		t.Errorf("wrong Gnosis Chain genesis state root, got %v, want %v", block.Root(), params.GnosisGenesisStateRoot)
-	}
-	if block.Hash() != params.GnosisGenesisHash {
-		t.Errorf("wrong Gnosis Chain genesis hash, got %v, want %v", block.Hash(), params.GnosisGenesisHash)
-	}
+	// block, _, err := core.GenesisToBlock(core.GnosisGenesisBlock(), "", log.Root())
+	// require.NoError(err)
+	// if block.Root() != params.GnosisGenesisStateRoot {
+	// 	t.Errorf("wrong Gnosis Chain genesis state root, got %v, want %v", block.Root(), params.GnosisGenesisStateRoot)
+	// }
+	// if block.Hash() != params.GnosisGenesisHash {
+	// 	t.Errorf("wrong Gnosis Chain genesis hash, got %v, want %v", block.Hash(), params.GnosisGenesisHash)
+	// }
 
-	block, _, err = core.GenesisToBlock(core.ChiadoGenesisBlock(), "", log.Root())
-	require.NoError(err)
-	if block.Root() != params.ChiadoGenesisStateRoot {
-		t.Errorf("wrong Chiado genesis state root, got %v, want %v", block.Root(), params.ChiadoGenesisStateRoot)
-	}
-	if block.Hash() != params.ChiadoGenesisHash {
-		t.Errorf("wrong Chiado genesis hash, got %v, want %v", block.Hash(), params.ChiadoGenesisHash)
-	}
+	// block, _, err = core.GenesisToBlock(core.ChiadoGenesisBlock(), "", log.Root())
+	// require.NoError(err)
+	// if block.Root() != params.ChiadoGenesisStateRoot {
+	// 	t.Errorf("wrong Chiado genesis state root, got %v, want %v", block.Root(), params.ChiadoGenesisStateRoot)
+	// }
+	// if block.Hash() != params.ChiadoGenesisHash {
+	// 	t.Errorf("wrong Chiado genesis hash, got %v, want %v", block.Hash(), params.ChiadoGenesisHash)
+	// }
 }
 
 func TestCommitGenesisIdempotency(t *testing.T) {

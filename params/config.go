@@ -72,11 +72,14 @@ var (
 	BorDevnetGenesisHash  = libcommon.HexToHash("0x5a06b25b0c6530708ea0b98a3409290e39dce6be7f558493aeb6e4b99a172a87")
 	GnosisGenesisHash     = libcommon.HexToHash("0x4f1dd23188aab3a76b463e4af801b52b1248ef073c648cbdc4c9333d3da79756")
 	ChiadoGenesisHash     = libcommon.HexToHash("0xada44fd8d2ecab8b08f256af07ad3e777f17fb434f8f8e678b312f576212ba9a")
+	GnoPectraDevnet1Hash = libcommon.HexToHash("0x54ca4cda2de78160721360e21a25b97ef9cae74adfa3a72f028d617852607be5")
 )
 
 var (
 	GnosisGenesisStateRoot = libcommon.HexToHash("0x40cf4430ecaa733787d1a65154a3b9efb560c95d9e324a23b97f0609b539133b")
 	ChiadoGenesisStateRoot = libcommon.HexToHash("0x9ec3eaf4e6188dfbdd6ade76eaa88289b57c63c9a2cde8d35291d5a29e143d31")
+	GnoPectraDevnet1Root = libcommon.HexToHash("0x2f3bd79d4874c241f1832f9e42b2c92d6c28ee22541bba3e49947bd14eaf4de1")
+
 )
 
 var (
@@ -143,6 +146,8 @@ var (
 	BorDevnetChainConfig = readChainSpec("chainspecs/bor-devnet.json")
 
 	GnosisChainConfig = readChainSpec("chainspecs/gnosis.json")
+
+	GnoPectraDevnet1Config = readChainSpec("chainspecs/gno_pectra_1.json")
 
 	ChiadoChainConfig = readChainSpec("chainspecs/chiado.json")
 

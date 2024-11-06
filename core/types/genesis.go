@@ -51,8 +51,8 @@ type Genesis struct {
 	Coinbase   common.Address `json:"coinbase"`
 	Alloc      GenesisAlloc   `json:"alloc"      gencodec:"required"`
 
-	AuRaStep uint64 `json:"auRaStep"`
-	AuRaSeal []byte `json:"auRaSeal"`
+	// AuRaStep uint64   `json:"auRaStep"`
+	AuRaSeal *AuRaSeal `json:"seal"`
 
 	// These fields are used for consensus tests. Please don't use them
 	// in actual genesis blocks.
@@ -66,6 +66,20 @@ type Genesis struct {
 	ExcessBlobGas         *uint64      `json:"excessBlobGas"`         // EIP-4844
 	ParentBeaconBlockRoot *common.Hash `json:"parentBeaconBlockRoot"` // EIP-4788
 	RequestsHash          *common.Hash `json:"requestsHash"`          // EIP-7685
+}
+
+type AuRaSeal struct {
+	AuthorityRound struct {
+		Step      uint64 `json:"step"`
+		Signature []byte `json:"signature"`
+	} `json:"authorityRound"`
+}
+
+func NewAuraSeal(step uint64, signature []byte) *AuRaSeal{
+	a := AuRaSeal{}
+	a.AuthorityRound.Step = step
+	copy(a.AuthorityRound.Signature, signature)
+	return &a
 }
 
 // GenesisAlloc specifies the initial state that is part of the genesis block.

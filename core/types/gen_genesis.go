@@ -54,8 +54,8 @@ func (g Genesis) MarshalJSON() ([]byte, error) {
 			enc.Alloc[common0.UnprefixedAddress(k)] = v
 		}
 	}
-	enc.AuRaStep = g.AuRaStep
-	enc.AuRaSeal = g.AuRaSeal
+	enc.AuRaStep = g.AuRaSeal.AuthorityRound.Step
+	enc.AuRaSeal = g.AuRaSeal.AuthorityRound.Signature
 	enc.Number = math.HexOrDecimal64(g.Number)
 	enc.GasUsed = math.HexOrDecimal64(g.GasUsed)
 	enc.ParentHash = g.ParentHash

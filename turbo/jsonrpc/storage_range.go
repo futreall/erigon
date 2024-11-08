@@ -17,6 +17,8 @@
 package jsonrpc
 
 import (
+	"fmt"
+
 	"github.com/holiman/uint256"
 
 	libcommon "github.com/erigontech/erigon-lib/common"
@@ -45,6 +47,7 @@ func storageRangeAt(ttx kv.TemporalTx, contractAddress libcommon.Address, start 
 	fromKey := append(libcommon.Copy(contractAddress.Bytes()), start...)
 	toKey, _ := kv.NextSubtree(contractAddress.Bytes())
 
+	fmt.Printf("[dbg] from: %x,%x\n", fromKey, start)
 	r, err := ttx.DomainRange(kv.StorageDomain, fromKey, toKey, txNum, order.Asc, kv.Unlim) //no limit because need skip empty records
 	if err != nil {
 		return StorageRangeResult{}, err

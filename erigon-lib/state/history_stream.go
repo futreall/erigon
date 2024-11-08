@@ -441,7 +441,7 @@ func (hi *HistoryChangesIterFiles) Next() ([]byte, []byte, error) {
 	if err := hi.advance(); err != nil {
 		return nil, nil, err
 	}
-	return hi.kBackup, hi.vBackup, nil
+	return common.Copy(hi.kBackup), common.Copy(hi.vBackup), nil
 }
 
 type HistoryChangesIterDB struct {

@@ -61,6 +61,7 @@ func storageRangeAt(ttx kv.TemporalTx, contractAddress libcommon.Address, start 
 		if len(v) == 0 {
 			continue // Skip deleted entries
 		}
+		fmt.Printf("[dbg] see: %x\n", k)
 		key := libcommon.BytesToHash(k[20:])
 		seckey, err := libcommon.HashData(k[20:])
 		if err != nil {

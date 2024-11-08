@@ -99,7 +99,7 @@ func (api *PrivateDebugAPIImpl) StorageRangeAt(ctx context.Context, blockHash co
 	if err != nil {
 		return StorageRangeResult{}, err
 	}
-	fromTxNum := minTxNum + txIndex //+1 for system txn in the beginning of block
+	fromTxNum := minTxNum + txIndex + 1 //+1 for system txn in the beginning of block
 	return storageRangeAt(tx.(kv.TemporalTx), contractAddress, keyStart, fromTxNum, maxResult)
 }
 

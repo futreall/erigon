@@ -45,9 +45,9 @@ jobs:
           make rpcdaemon
         working-directory: ${{ github.workspace }}
 
-      - name: Pause the Erigon instance dedicated to db maintenance
-        run: |
-          python3 $ERIGON_QA_PATH/test_system/db-producer/pause_production.py || true
+      #- name: Pause the Erigon instance dedicated to db maintenance
+      #  run: |
+      #    python3 $ERIGON_QA_PATH/test_system/db-producer/pause_production.py || true
 
       - name: Run RpcDaemon
         working-directory: ${{ github.workspace }}/build/bin
@@ -120,9 +120,9 @@ jobs:
             echo "RpcDaemon has already terminated"
           fi
 
-      - name: Resume the Erigon instance dedicated to db maintenance
-        run: |
-          python3 $ERIGON_QA_PATH/test_system/db-producer/resume_production.py || true
+      #- name: Resume the Erigon instance dedicated to db maintenance
+      #  run: |
+      #    python3 $ERIGON_QA_PATH/test_system/db-producer/resume_production.py || true
 
       - name: Upload test results
         if: steps.test_step.outputs.test_executed == 'true'

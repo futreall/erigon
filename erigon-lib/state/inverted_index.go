@@ -611,6 +611,12 @@ func (iit *InvertedIndexRoTx) seekInFiles(key []byte, txNum uint64) (found bool,
 			fmt.Printf("DomainGetAsOf2(%s, %x, %d) -> %s; found=%d %t; file=%d-%d\n", iit.ii.filenameBase, key, txNum, g.FileName(), b, ok, iit.files[i].startTxNum, iit.files[i].endTxNum)
 		}
 		if found {
+			if equalOrHigherTxNum < iit.files[i].startTxNum {
+				panic(fmt.Sprintf("assert: %d < %d", equalOrHigherTxNum, iit.files[i].startTxNum))
+			}
+			if equalOrHigherTxNum >= iit.files[i].endTxNum {
+				panic(fmt.Sprintf("assert: %d >= %d", equalOrHigherTxNum, iit.files[i].endTxNum))
+			}
 			if iit.seekInFilesCache != nil {
 				iit.seekInFilesCache.Add(hi, iiSeekInFilesCacheItem{requested: txNum, found: equalOrHigherTxNum})
 			}

@@ -557,6 +557,7 @@ func (r *BlockReader) HeaderByHash(ctx context.Context, tx kv.Getter, hash commo
 
 	buf := make([]byte, 128)
 	segments := segmentRotx.Segments
+	fmt.Printf("[dbg] alex: %d\n", len(segments))
 	for i := len(segments) - 1; i >= 0; i-- {
 		h, err = r.headerFromSnapshotByHash(hash, segments[i], buf)
 		if err != nil {
@@ -941,14 +942,15 @@ func (r *BlockReader) headerFromSnapshotByHash(hash common.Hash, sn *snapshotsyn
 	}() // avoid crash because Erigon's core does many things
 
 	index := sn.Src().Index()
-
 	if index == nil {
+		fmt.Printf("[dbg] alex1: %s\n", sn.Src().FileName())
 		return nil, nil
 	}
 
 	reader := recsplit.NewIndexReader(index)
 	localID, ok := reader.Lookup(hash[:])
 	if !ok {
+		fmt.Printf("[dbg] alex2: %s\n", sn.Src().FileName())
 		return nil, nil
 	}
 	headerOffset := index.OrdinalLookup(localID)
@@ -956,6 +958,7 @@ func (r *BlockReader) headerFromSnapshotByHash(hash common.Hash, sn *snapshotsyn
 	gg := sn.Src().MakeGetter()
 	gg.Reset(headerOffset)
 	if !gg.HasNext() {
+		fmt.Printf("[dbg] alex3: %s\n", sn.Src().FileName())
 		return nil, nil
 	}
 	buf, _ = gg.Next(buf[:0])
@@ -968,6 +971,7 @@ func (r *BlockReader) headerFromSnapshotByHash(hash common.Hash, sn *snapshotsyn
 		return nil, err
 	}
 	if h.Hash() != hash {
+		fmt.Printf("[dbg] alex4: %s\n", sn.Src().FileName())
 		return nil, nil
 	}
 	return h, nil

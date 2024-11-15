@@ -137,6 +137,7 @@ func (hi *StateAsOfIterF) advanceInFiles() error {
 		//hi.nextVal, _ = g.Next(nil)
 		nextVal, _ := g.Next(nil)
 		if len(nextVal) == 0 {
+			g.Reset(offset)
 			continue
 		}
 		hi.nextVal = nextVal

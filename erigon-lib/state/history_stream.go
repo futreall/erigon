@@ -134,10 +134,12 @@ func (hi *StateAsOfIterF) advanceInFiles() error {
 		}
 		g := hi.hc.statelessGetter(historyItem.i)
 		g.Reset(offset)
-		hi.nextVal, _ = g.Next(nil)
-		if len(hi.nextVal) == 0 {
-			println("why..? why?...", len(idxVal))
+		//hi.nextVal, _ = g.Next(nil)
+		nextVal, _ := g.Next(nil)
+		if len(nextVal) == 0 {
+			continue
 		}
+		hi.nextVal = nextVal
 		return nil
 	}
 	hi.nextKey = nil

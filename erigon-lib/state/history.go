@@ -964,7 +964,7 @@ func (h *History) BeginFilesRo() *HistoryRoTx {
 	}
 }
 
-func (ht *HistoryRoTx) statelessGetter(i int) *seg.Reader {
+func (ht *HistoryRoTx) statelessReader(i int) *seg.Reader {
 	if ht.getters == nil {
 		ht.getters = make([]*seg.Reader, len(ht.files))
 	}
@@ -976,7 +976,7 @@ func (ht *HistoryRoTx) statelessGetter(i int) *seg.Reader {
 	}
 	return r
 }
-func (ht *HistoryRoTx) statelessIdxReader(i int) *recsplit.IndexReader {
+func (ht *HistoryRoTx) statelessAccessorReader(i int) *recsplit.IndexReader {
 	if ht.readers == nil {
 		ht.readers = make([]*recsplit.IndexReader, len(ht.files))
 	}
@@ -1154,20 +1154,24 @@ func (ht *HistoryRoTx) historySeekInFiles(key []byte, txNum uint64) ([]byte, boo
 	if !ok {
 		return nil, false, nil
 	}
+
 	historyItem, ok := ht.getFile(histTxNum)
 	if !ok {
 		log.Warn("historySeekInFiles: file not found", "key", key, "txNum", txNum, "histTxNum", histTxNum, "ssize", ht.h.aggregationStep)
 		return nil, false, fmt.Errorf("hist file not found: key=%x, %s.%d-%d", key, ht.h.filenameBase, histTxNum/ht.h.aggregationStep, histTxNum/ht.h.aggregationStep)
 	}
-	reader := ht.statelessIdxReader(historyItem.i)
-	if reader.Empty() {
+	accessor := ht.statelessAccessorReader(historyItem.i)
+	if accessor.Empty() {
 		return nil, false, nil
 	}
-	offset, ok := reader.Lookup(ht.encodeTs(histTxNum, key))
+	offset, ok := accessor.Lookup(ht.encodeTs(histTxNum, key))
+	if traceGetAsOf == ht.h.filenameBase {
+		fmt.Printf("DomainGetAsOf(%s, %x, %d) -> %s, histTxNum=%d, ok=%t\n", ht.h.filenameBase, key, txNum, historyItem.src.decompressor.FileName(), histTxNum, ok)
+	}
 	if !ok {
 		return nil, false, nil
 	}
-	g := ht.statelessGetter(historyItem.i)
+	g := ht.statelessReader(historyItem.i)
 	g.Reset(offset)
 
 	v, _ := g.Next(nil)

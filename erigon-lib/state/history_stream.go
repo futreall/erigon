@@ -127,12 +127,12 @@ func (hi *StateAsOfIterF) advanceInFiles() error {
 		if !ok {
 			return fmt.Errorf("no %s file found for [%x]", hi.hc.h.filenameBase, hi.nextKey)
 		}
-		reader := hi.hc.statelessIdxReader(historyItem.i)
+		reader := hi.hc.statelessAccessorReader(historyItem.i)
 		offset, ok := reader.Lookup2(hi.txnKey[:], hi.nextKey)
 		if !ok {
 			continue
 		}
-		g := hi.hc.statelessGetter(historyItem.i)
+		g := hi.hc.statelessReader(historyItem.i)
 		g.Reset(offset)
 		hi.nextVal, _ = g.Next(nil)
 		return nil
@@ -402,12 +402,12 @@ func (hi *HistoryChangesIterFiles) advance() error {
 		if !ok {
 			return fmt.Errorf("HistoryChangesIterFiles: no %s file found for [%x]", hi.hc.h.filenameBase, hi.nextKey)
 		}
-		reader := hi.hc.statelessIdxReader(historyItem.i)
+		reader := hi.hc.statelessAccessorReader(historyItem.i)
 		offset, ok := reader.Lookup2(hi.txnKey[:], hi.nextKey)
 		if !ok {
 			continue
 		}
-		g := hi.hc.statelessGetter(historyItem.i)
+		g := hi.hc.statelessReader(historyItem.i)
 		g.Reset(offset)
 		hi.nextVal, _ = g.Next(nil)
 		return nil

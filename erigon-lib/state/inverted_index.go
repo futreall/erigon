@@ -566,9 +566,9 @@ func (iit *InvertedIndexRoTx) seekInFiles(key []byte, txNum uint64) (found bool,
 
 	hi, lo := iit.hashKey(key)
 
-	if iit.seekInFilesCache == nil {
-		iit.seekInFilesCache = iit.visible.newSeekInFilesCache()
-	}
+	//if iit.seekInFilesCache == nil {
+	//	iit.seekInFilesCache = iit.visible.newSeekInFilesCache()
+	//}
 
 	if iit.seekInFilesCache != nil {
 		iit.seekInFilesCache.total++
@@ -596,12 +596,17 @@ func (iit *InvertedIndexRoTx) seekInFiles(key []byte, txNum uint64) (found bool,
 		g := iit.statelessGetter(i)
 		g.Reset(offset)
 		k, _ := g.Next(nil)
+		if traceGetAsOf == iit.ii.filenameBase {
+			fmt.Printf("DomainGetAsOf(%s, %x, %d) -> %s, key=%x\n", iit.ii.filenameBase, key, txNum, g.FileName(), k)
+		}
 		if !bytes.Equal(k, key) {
 			continue
 		}
 		eliasVal, _ := g.Next(nil)
 		equalOrHigherTxNum, found = eliasfano32.Seek(eliasVal, txNum)
-
+		if traceGetAsOf == iit.ii.filenameBase {
+			fmt.Printf("DomainGetAsOf(%s, %x, %d) -> %s ef=%d, %x; found=%t %d\n", iit.ii.filenameBase, key, txNum, g.FileName(), len(eliasVal), eliasVal, found, equalOrHigherTxNum)
+		}
 		if found {
 			if iit.seekInFilesCache != nil {
 				iit.seekInFilesCache.Add(hi, iiSeekInFilesCacheItem{requested: txNum, found: equalOrHigherTxNum})

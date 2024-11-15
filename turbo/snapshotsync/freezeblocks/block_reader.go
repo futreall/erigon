@@ -557,7 +557,7 @@ func (r *BlockReader) HeaderByHash(ctx context.Context, tx kv.Getter, hash commo
 
 	buf := make([]byte, 128)
 	segments := segmentRotx.Segments
-	fmt.Printf("[dbg] alex: %d\n", len(segments))
+
 	for i := len(segments) - 1; i >= 0; i-- {
 		h, err = r.headerFromSnapshotByHash(hash, segments[i], buf)
 		if err != nil {
@@ -566,6 +566,11 @@ func (r *BlockReader) HeaderByHash(ctx context.Context, tx kv.Getter, hash commo
 		if h != nil {
 			break
 		}
+	}
+
+	dbgLogs := dbg.Enabled(ctx)
+	if dbgLogs {
+		log.Info(fmt.Sprintf("[dbg] BlockReader(idxMax=%d,segMax=%d).HeaderByHash(hash=%x) -> %v", r.sn.IndicesMax(), r.sn.SegmentsMax(), hash, h))
 	}
 	return h, nil
 }

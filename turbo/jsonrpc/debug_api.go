@@ -303,10 +303,12 @@ func (api *PrivateDebugAPIImpl) AccountAt(ctx context.Context, blockHash common.
 		return &AccountResult{}, err
 	}
 	if number == nil {
+		panic(1)
 		return nil, nil // not error, see https://github.com/erigontech/erigon/issues/1645
 	}
 	canonicalHash, ok, err := api._blockReader.CanonicalHash(ctx, tx, *number)
 	if err != nil {
+		panic(err)
 		return nil, err
 	}
 	if !ok {
@@ -314,19 +316,23 @@ func (api *PrivateDebugAPIImpl) AccountAt(ctx context.Context, blockHash common.
 	}
 	isCanonical := canonicalHash == blockHash
 	if !isCanonical {
+		panic(err)
 		return nil, errors.New("block hash is not canonical")
 	}
 
 	minTxNum, err := txNumsReader.Min(tx, *number)
 	if err != nil {
+		panic(err)
 		return nil, err
 	}
 	ttx := tx.(kv.TemporalTx)
 	v, ok, err := ttx.DomainGetAsOf(kv.AccountsDomain, address[:], nil, minTxNum+txIndex+1)
 	if err != nil {
+		panic(err)
 		return nil, err
 	}
 	if !ok || len(v) == 0 {
+		panic(err)
 		return &AccountResult{}, nil
 	}
 

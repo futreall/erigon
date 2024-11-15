@@ -608,7 +608,7 @@ func (iit *InvertedIndexRoTx) seekInFiles(key []byte, txNum uint64) (found bool,
 			fmt.Printf("DomainGetAsOf2(%s, %x, %d) -> %s ef=%d; found=%t %d\n", iit.ii.filenameBase, key, txNum, g.FileName(), len(eliasVal), found, equalOrHigherTxNum)
 			ef, _ := eliasfano32.ReadEliasFano(eliasVal)
 			b, ok := ef.Search(txNum)
-			fmt.Printf("DomainGetAsOf2(%s, %x, %d) -> %s ef=%d; found=%d %t\n", iit.ii.filenameBase, key, txNum, g.FileName(), b, ok)
+			fmt.Printf("DomainGetAsOf2(%s, %x, %d) -> %s; found=%d %t\n", iit.ii.filenameBase, key, txNum, g.FileName(), b, ok)
 		}
 		if found {
 			if iit.seekInFilesCache != nil {

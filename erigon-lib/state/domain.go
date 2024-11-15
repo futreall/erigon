@@ -1641,6 +1641,13 @@ func (dt *DomainRoTx) GetAsOf(key []byte, txNum uint64, roTx kv.Tx) ([]byte, boo
 	if err != nil {
 		return nil, false, err
 	}
+	if len(v) == 0 { // if history successfuly found marker of key creation
+		if traceGetAsOf == dt.d.filenameBase {
+			fmt.Printf("DomainGetAsOf(%s  , %x, %d) -> not found in latest state\n", dt.d.filenameBase, key, txNum)
+		}
+		return nil, false, nil
+	}
+
 	return v, v != nil, nil
 }
 

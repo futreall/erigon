@@ -109,7 +109,7 @@ func (hi *StateAsOfIterF) advanceInFiles() error {
 			}
 		}
 
-		if hi.from != nil && bytes.Compare(key, hi.from) < 0 { //TODO: replace by seekInFiles()
+		if hi.from != nil && bytes.Compare(key, hi.from) < 0 || len(idxVal) == 0 { //TODO: replace by seekInFiles()
 			continue
 		}
 
@@ -256,7 +256,7 @@ func (hi *StateAsOfIterDB) advanceLargeVals() error {
 		if hi.toPrefix != nil && bytes.Compare(k[:len(k)-8], hi.toPrefix) >= 0 {
 			break
 		}
-		if !bytes.Equal(seek[:len(k)-8], k[:len(k)-8]) {
+		if !bytes.Equal(seek[:len(k)-8], k[:len(k)-8]) || len(v) == 0 {
 			copy(seek[:len(k)-8], k[:len(k)-8])
 			continue
 		}
@@ -294,7 +294,7 @@ func (hi *StateAsOfIterDB) advanceSmallVals() error {
 		if err != nil {
 			return err
 		}
-		if v == nil {
+		if v == nil || len(v) == 0 {
 			continue
 		}
 		hi.nextKey = k

@@ -32,10 +32,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spaolacci/murmur3"
-	btree2 "github.com/tidwall/btree"
-	"golang.org/x/sync/errgroup"
-
+	. "github.com/WAY29/icecream-go/icecream"
 	"github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/assert"
 	"github.com/erigontech/erigon-lib/common/background"
@@ -51,6 +48,9 @@ import (
 	"github.com/erigontech/erigon-lib/recsplit"
 	"github.com/erigontech/erigon-lib/recsplit/eliasfano32"
 	"github.com/erigontech/erigon-lib/seg"
+	"github.com/spaolacci/murmur3"
+	btree2 "github.com/tidwall/btree"
+	"golang.org/x/sync/errgroup"
 )
 
 type InvertedIndex struct {
@@ -602,19 +602,26 @@ func (iit *InvertedIndexRoTx) seekInFiles(key []byte, txNum uint64) (found bool,
 		if !bytes.Equal(k, key) {
 			continue
 		}
+
 		eliasVal, _ := g.Next(nil)
 		equalOrHigherTxNum, found = eliasfano32.Seek(eliasVal, txNum)
 		if traceGetAsOf == iit.ii.filenameBase {
 			fmt.Printf("DomainGetAsOf2(%s, %x, %d) -> %s ef=%d; found=%t %d\n", iit.ii.filenameBase, key, txNum, g.FileName(), len(eliasVal), found, equalOrHigherTxNum)
 			ef, _ := eliasfano32.ReadEliasFano(eliasVal)
-			b, ok := ef.Search(txNum)
+			b, _ := ef.Search(txNum)
+			if b < ef.Min() || b > ef.Max() {
+				Ic(b < ef.Min() || b > ef.Max())
+				panic(fmt.Sprintf("assert: %d out of bounds %d-%d", b, ef.Min(), ef.Max()))
+			}
 			fmt.Printf("DomainGetAsOf2(%s, %x, %d) -> %s; found=%d %t; file=%d-%d\n", iit.ii.filenameBase, key, txNum, g.FileName(), b, ok, iit.files[i].startTxNum, iit.files[i].endTxNum)
 		}
 		if found {
 			if equalOrHigherTxNum < iit.files[i].startTxNum {
+				Ic(equalOrHigherTxNum < iit.files[i].startTxNum)
 				panic(fmt.Sprintf("assert: %d < %d", equalOrHigherTxNum, iit.files[i].startTxNum))
 			}
 			if equalOrHigherTxNum >= iit.files[i].endTxNum {
+				Ic(equalOrHigherTxNum >= iit.files[i].endTxNum)
 				panic(fmt.Sprintf("assert: %d >= %d", equalOrHigherTxNum, iit.files[i].endTxNum))
 			}
 			if iit.seekInFilesCache != nil {

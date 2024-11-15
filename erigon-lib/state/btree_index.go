@@ -609,7 +609,7 @@ func NewBtIndexWriter(args BtIndexWriterArgs, logger log.Logger) (*BtIndexWriter
 	return btw, nil
 }
 
-func (btw *BtIndexWriter) AddKey(key []byte, offset uint64) error {
+func (btw *BtIndexWriter) AddKey(key []byte, offset uint64, keepKey bool) error {
 	if btw.built {
 		return errors.New("cannot add keys after perfect hash function had been built")
 	}
@@ -619,13 +619,14 @@ func (btw *BtIndexWriter) AddKey(key []byte, offset uint64) error {
 		btw.maxOffset = offset
 	}
 
-	keepKey := false
 	if btw.keysWritten > 0 {
 		delta := offset - btw.prevOffset
 		if btw.keysWritten == 1 || delta < btw.minDelta {
 			btw.minDelta = delta
 		}
-		keepKey = btw.keysWritten%btw.args.M == 0
+		if !keepKey {
+			keepKey = btw.keysWritten%btw.args.M == 0
+		}
 	}
 
 	var k []byte
@@ -796,21 +797,40 @@ func BuildBtreeIndexWithDecompressor(indexPath string, kv *seg.Decompressor, com
 	getter := seg.NewReader(kv.MakeGetter(), compression)
 	getter.Reset(0)
 
-	key := make([]byte, 0, 64)
-	var pos uint64
+	var (
+		pos, offt, d uint64
+
+		pageLimit = uint64(8096 - 128)
+		keep      = false
+
+		key        = make([]byte, 0, 64)
+		keysInPage = make(map[int]int)
+		kp         = 0
+	)
 
 	for getter.HasNext() {
-		key, _ = getter.Next(key[:0])
-		err = iw.AddKey(key, pos)
+		key, offt = getter.Next(key[:0])
+		d += (offt - pos)
+		kp++
+
+		if d > pageLimit {
+			keep = true
+			keysInPage[kp]++
+			d, kp = 0, 0
+		}
+		err = iw.AddKey(key, pos, keep)
 		if err != nil {
 			return err
 		}
 		hi, _ := murmur3.Sum128WithSeed(key, salt)
 		bloom.AddHash(hi)
 		pos, _ = getter.Skip()
+		d += (pos - offt)
 
 		p.Processed.Add(1)
 	}
+
+	logger.Warn("keys in page", "keys", fmt.Sprintf("%v", keysInPage))
 	//logger.Warn("empty keys", "key lengths", ks, "total emptys", emptys, "total", kv.Count()/2)
 	if err := iw.Build(); err != nil {
 		return err

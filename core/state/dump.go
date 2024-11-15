@@ -171,12 +171,15 @@ func (d *Dumper) DumpToCollector(c DumpCollector, excludeCode, excludeStorage bo
 		if err != nil {
 			return nil, err
 		}
-		if len(v) == 0 {
-			continue
-		}
+		//if len(v) == 0 {
+		//	continue
+		//}
 		if maxResults > 0 && numberOfResults >= maxResults {
 			nextKey = append(nextKey[:0], k...)
 			break
+		}
+		if len(v) == 0 {
+			continue
 		}
 
 		if e := accounts.DeserialiseV3(&acc, v); e != nil {

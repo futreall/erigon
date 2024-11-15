@@ -605,7 +605,7 @@ func (iit *InvertedIndexRoTx) seekInFiles(key []byte, txNum uint64) (found bool,
 		eliasVal, _ := g.Next(nil)
 		equalOrHigherTxNum, found = eliasfano32.Seek(eliasVal, txNum)
 		if traceGetAsOf == iit.ii.filenameBase {
-			fmt.Printf("DomainGetAsOf2(%s, %x, %d) -> %s ef=%d, %x; found=%t %d\n", iit.ii.filenameBase, key, txNum, g.FileName(), len(eliasVal), eliasVal, found, equalOrHigherTxNum)
+			fmt.Printf("DomainGetAsOf2(%s, %x, %d) -> %s ef=%d; found=%t %d\n", iit.ii.filenameBase, key, txNum, g.FileName(), len(eliasVal), found, equalOrHigherTxNum)
 			ef, _ := eliasfano32.ReadEliasFano(eliasVal)
 			b, ok := ef.Search(txNum)
 			fmt.Printf("DomainGetAsOf2(%s, %x, %d) -> %s ef=%d; found=%d %t\n", iit.ii.filenameBase, key, txNum, g.FileName(), b, ok)

@@ -327,6 +327,7 @@ func (api *PrivateDebugAPIImpl) AccountAt(ctx context.Context, blockHash common.
 		panic(err)
 		return nil, err
 	}
+	fmt.Printf("[dbg] block: %d, %d\n", *number, minTxNum)
 	ttx := tx.(kv.TemporalTx)
 	v, ok, err := ttx.DomainGetAsOf(kv.AccountsDomain, address[:], nil, minTxNum+txIndex+1)
 	if err != nil {

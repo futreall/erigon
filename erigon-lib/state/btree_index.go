@@ -604,6 +604,7 @@ func NewBtIndexWriter(args BtIndexWriterArgs, logger log.Logger) (*BtIndexWriter
 	btw.indexFileName = fname
 
 	btw.collector = etl.NewCollector(BtreeLogPrefix+" "+fname, btw.args.TmpDir, etl.NewSortableBuffer(btw.args.EtlBufLimit), logger)
+	btw.collector.SortAndFlushInBackground(true)
 	btw.collector.LogLvl(btw.args.Lvl)
 
 	return btw, nil

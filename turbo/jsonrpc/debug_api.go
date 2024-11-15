@@ -329,7 +329,7 @@ func (api *PrivateDebugAPIImpl) AccountAt(ctx context.Context, blockHash common.
 	}
 	fmt.Printf("[dbg] block: %d, %d\n", *number, minTxNum)
 	ttx := tx.(kv.TemporalTx)
-	v, ok, err := ttx.DomainGetAsOf(kv.AccountsDomain, address[:], nil, minTxNum+txIndex+1)
+	v, ok, err := ttx.DomainGetAsOf(kv.AccountsDomain, address[:], nil, minTxNum+txIndex)
 	if err != nil {
 		panic(err)
 		return nil, err
@@ -343,6 +343,7 @@ func (api *PrivateDebugAPIImpl) AccountAt(ctx context.Context, blockHash common.
 	if err := accounts.DeserialiseV3(&a, v); err != nil {
 		return nil, err
 	}
+	fmt.Printf("[dbg] see: nonce=%d\n", a.Nonce)
 	result := &AccountResult{}
 	result.Balance.ToInt().Set(a.Balance.ToBig())
 	result.Nonce = hexutil.Uint64(a.Nonce)

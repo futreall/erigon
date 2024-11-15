@@ -179,6 +179,7 @@ func (d *Dumper) DumpToCollector(c DumpCollector, excludeCode, excludeStorage bo
 			break
 		}
 		if len(v) == 0 {
+			println("value is zero")
 			continue
 		}
 

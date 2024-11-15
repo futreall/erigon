@@ -830,7 +830,8 @@ func BuildBtreeIndexWithDecompressor(indexPath string, kv *seg.Decompressor, com
 		p.Processed.Add(1)
 	}
 
-	logger.Warn("keys in page", "keys", fmt.Sprintf("%v", keysInPage))
+	_, base := filepath.Split(iw.args.IndexFile)
+	logger.Warn("keys in page", "keys", fmt.Sprintf("%v", keysInPage), "domain", base, "total", kv.Count()/2)
 	//logger.Warn("empty keys", "key lengths", ks, "total emptys", emptys, "total", kv.Count()/2)
 	if err := iw.Build(); err != nil {
 		return err

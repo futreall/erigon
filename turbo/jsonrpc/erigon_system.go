@@ -76,6 +76,7 @@ func (api *ErigonImpl) BlockNumber(ctx context.Context, rpcBlockNumPtr *rpc.Bloc
 	case rpc.LatestBlockNumber:
 		blockNum, err = rpchelper.GetLatestBlockNumber(tx)
 		if err != nil {
+			panic(err)
 			return 0, err
 		}
 	case rpc.EarliestBlockNumber:
@@ -83,6 +84,7 @@ func (api *ErigonImpl) BlockNumber(ctx context.Context, rpcBlockNumPtr *rpc.Bloc
 	case rpc.SafeBlockNumber:
 		blockNum, err = rpchelper.GetSafeBlockNumber(tx)
 		if err != nil {
+			panic(err)
 			return 0, err
 		}
 	case rpc.FinalizedBlockNumber:
@@ -98,11 +100,13 @@ func (api *ErigonImpl) BlockNumber(ctx context.Context, rpcBlockNumPtr *rpc.Bloc
 
 		blockNum, err = rpchelper.GetFinalizedBlockNumber(tx)
 		if err != nil {
+			panic(err)
 			return 0, err
 		}
 	default:
 		blockNum, err = rpchelper.GetLatestExecutedBlockNumber(tx)
 		if err != nil {
+			panic(err)
 			return 0, err
 		}
 	}

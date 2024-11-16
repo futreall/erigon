@@ -8,8 +8,6 @@ disabled_tests=(
     trace_rawTransaction
     # Erigon bugs
     debug_accountRange
-    # changed in last commits
-    debug_storageRangeAt/test_11.json
     # needs investigations
     debug_getModifiedAccountsByHash
     debug_getModifiedAccountsByNumber

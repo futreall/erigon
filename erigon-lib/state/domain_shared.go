@@ -906,50 +906,40 @@ func (sd *SharedDomains) Flush(ctx context.Context, tx kv.RwTx) error {
 	}
 	sd.pastChangesAccumulator = make(map[string]*StateChangeSet)
 
-	defer mxFlushTook.ObserveDuration(time.Now())
+	t1 := time.Now()
 	fh, err := sd.ComputeCommitment(ctx, true, sd.BlockNum(), "flush-commitment")
 	if err != nil {
 		return err
 	}
+	d1 := time.Since(t1)
 	if sd.trace {
 		_, f, l, _ := runtime.Caller(1)
 		fmt.Printf("[SD aggTx=%d] FLUSHING at tx %d [%x], caller %s:%d\n", sd.aggTx.id, sd.TxNum(), fh, filepath.Base(f), l)
 	}
-	for _, w := range sd.domainWriters {
-		if w == nil {
-			continue
-		}
-		if err := w.Flush(ctx, tx); err != nil {
-			return err
-		}
-	}
-	for _, w := range sd.iiWriters {
-		if w == nil {
-			continue
-		}
-		if err := w.Flush(ctx, tx); err != nil {
-			return err
-		}
-	}
+	defer mxFlushTook.ObserveDuration(time.Now())
 	if dbg.PruneOnFlushTimeout != 0 {
 		_, err = sd.aggTx.PruneSmallBatches(ctx, dbg.PruneOnFlushTimeout, tx)
 		if err != nil {
 			return err
 		}
 	}
-
+	t2 := time.Now()
 	for _, w := range sd.domainWriters {
 		if w == nil {
 			continue
 		}
 		w.close()
 	}
+	d2 := time.Since(t2)
+	t3 := time.Now()
 	for _, w := range sd.iiWriters {
 		if w == nil {
 			continue
 		}
 		w.close()
 	}
+	log.Warn(fmt.Sprintf("[dbg] Trie Flush: calc=%s, dom=%s, ii=%s\n", d1, d2, time.Since(t3)))
+
 	return nil
 }
 

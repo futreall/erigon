@@ -18,7 +18,6 @@ package bor_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -30,13 +29,13 @@ import (
 
 	"github.com/erigontech/erigon-lib/chain"
 	libcommon "github.com/erigontech/erigon-lib/common"
+	"github.com/erigontech/erigon-lib/crypto"
 	sentry "github.com/erigontech/erigon-lib/gointerfaces/sentryproto"
 	"github.com/erigontech/erigon-lib/kv/memdb"
 	"github.com/erigontech/erigon-lib/log/v3"
 	"github.com/erigontech/erigon/consensus"
 	"github.com/erigontech/erigon/core"
 	"github.com/erigontech/erigon/core/types"
-	"github.com/erigontech/erigon/crypto"
 	"github.com/erigontech/erigon/eth/protocols/eth"
 	"github.com/erigontech/erigon/ethdb/prune"
 	"github.com/erigontech/erigon/params"
@@ -117,6 +116,10 @@ func (h *test_heimdall) FetchSpan(ctx context.Context, spanID uint64) (*heimdall
 	h.spans[h.currentSpan.Id] = h.currentSpan
 
 	return h.currentSpan, nil
+}
+
+func (h *test_heimdall) FetchSpans(ctx context.Context, page uint64, limit uint64) ([]*heimdall.Span, error) {
+	return nil, errors.New("TODO")
 }
 
 func (h test_heimdall) currentSprintLength() int {
@@ -211,9 +214,8 @@ func (r headerReader) GetTd(libcommon.Hash, uint64) *big.Int {
 	return nil
 }
 
-func (r headerReader) BorSpan(spanId uint64) []byte {
-	b, _ := json.Marshal(&r.validator.heimdall.currentSpan)
-	return b
+func (r headerReader) BorSpan(spanId uint64) *heimdall.Span {
+	return r.validator.heimdall.currentSpan
 }
 
 type spanner struct {
@@ -231,7 +233,7 @@ func (c *spanner) CommitSpan(heimdallSpan heimdall.Span, syscall consensus.Syste
 	return nil
 }
 
-func (c *spanner) GetCurrentValidators(spanId uint64, chain consensus.ChainHeaderReader) ([]*valset.Validator, error) {
+func (c *spanner) GetCurrentValidators(spanId uint64, chain bor.ChainHeaderReader) ([]*valset.Validator, error) {
 	return []*valset.Validator{
 		{
 			ID:               1,

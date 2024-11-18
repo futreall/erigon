@@ -335,7 +335,6 @@ const (
 	PendingEpoch = "DevPendingEpoch" // block_num_u64+block_hash->transition_proof
 
 	// BOR
-	BorReceipts             = "BorReceipt"
 	BorFinality             = "BorFinality"
 	BorTxLookup             = "BlockBorTransactionLookup" // transaction_hash -> block_num_u64
 	BorSeparate             = "BorSeparate"               // persisted snapshots of the Validator Sets, with their proposer priorities
@@ -356,29 +355,30 @@ const (
 	// Domains/History/InvertedIndices
 	// Contants have "Tbl" prefix, to avoid collision with actual Domain names
 	// This constants is very rarely used in APP, but Domain/History/Idx names are widely used
-	TblAccountKeys        = "AccountKeys"
 	TblAccountVals        = "AccountVals"
 	TblAccountHistoryKeys = "AccountHistoryKeys"
 	TblAccountHistoryVals = "AccountHistoryVals"
 	TblAccountIdx         = "AccountIdx"
 
-	TblStorageKeys        = "StorageKeys"
 	TblStorageVals        = "StorageVals"
 	TblStorageHistoryKeys = "StorageHistoryKeys"
 	TblStorageHistoryVals = "StorageHistoryVals"
 	TblStorageIdx         = "StorageIdx"
 
-	TblCodeKeys        = "CodeKeys"
 	TblCodeVals        = "CodeVals"
 	TblCodeHistoryKeys = "CodeHistoryKeys"
 	TblCodeHistoryVals = "CodeHistoryVals"
 	TblCodeIdx         = "CodeIdx"
 
-	TblCommitmentKeys        = "CommitmentKeys"
 	TblCommitmentVals        = "CommitmentVals"
 	TblCommitmentHistoryKeys = "CommitmentHistoryKeys"
 	TblCommitmentHistoryVals = "CommitmentHistoryVals"
 	TblCommitmentIdx         = "CommitmentIdx"
+
+	TblReceiptVals        = "ReceiptVals"
+	TblReceiptHistoryKeys = "ReceiptHistoryKeys"
+	TblReceiptHistoryVals = "ReceiptHistoryVals"
+	TblReceiptIdx         = "ReceiptIdx"
 
 	TblLogAddressKeys = "LogAddressKeys"
 	TblLogAddressIdx  = "LogAddressIdx"
@@ -540,7 +540,6 @@ var ChaindataTables = []string{
 	HeaderTD,
 	Epoch,
 	PendingEpoch,
-	BorReceipts,
 	BorFinality,
 	BorTxLookup,
 	BorSeparate,
@@ -553,29 +552,30 @@ var ChaindataTables = []string{
 	BorCheckpoints,
 	BorCheckpointEnds,
 	BorProducerSelections,
-	TblAccountKeys,
 	TblAccountVals,
 	TblAccountHistoryKeys,
 	TblAccountHistoryVals,
 	TblAccountIdx,
 
-	TblStorageKeys,
 	TblStorageVals,
 	TblStorageHistoryKeys,
 	TblStorageHistoryVals,
 	TblStorageIdx,
 
-	TblCodeKeys,
 	TblCodeVals,
 	TblCodeHistoryKeys,
 	TblCodeHistoryVals,
 	TblCodeIdx,
 
-	TblCommitmentKeys,
 	TblCommitmentVals,
 	TblCommitmentHistoryKeys,
 	TblCommitmentHistoryVals,
 	TblCommitmentIdx,
+
+	TblReceiptVals,
+	TblReceiptHistoryKeys,
+	TblReceiptHistoryVals,
+	TblReceiptIdx,
 
 	TblLogAddressKeys,
 	TblLogAddressIdx,
@@ -724,24 +724,24 @@ var ChaindataTablesCfg = TableCfg{
 	},
 	CallTraceSet: {Flags: DupSort},
 
-	TblAccountKeys:           {Flags: DupSort},
 	TblAccountVals:           {Flags: DupSort},
 	TblAccountHistoryKeys:    {Flags: DupSort},
 	TblAccountHistoryVals:    {Flags: DupSort},
 	TblAccountIdx:            {Flags: DupSort},
-	TblStorageKeys:           {Flags: DupSort},
 	TblStorageVals:           {Flags: DupSort},
 	TblStorageHistoryKeys:    {Flags: DupSort},
 	TblStorageHistoryVals:    {Flags: DupSort},
 	TblStorageIdx:            {Flags: DupSort},
-	TblCodeKeys:              {Flags: DupSort},
 	TblCodeHistoryKeys:       {Flags: DupSort},
 	TblCodeIdx:               {Flags: DupSort},
-	TblCommitmentKeys:        {Flags: DupSort},
 	TblCommitmentVals:        {Flags: DupSort},
 	TblCommitmentHistoryKeys: {Flags: DupSort},
 	TblCommitmentHistoryVals: {Flags: DupSort},
 	TblCommitmentIdx:         {Flags: DupSort},
+	TblReceiptVals:           {Flags: DupSort},
+	TblReceiptHistoryKeys:    {Flags: DupSort},
+	TblReceiptHistoryVals:    {Flags: DupSort},
+	TblReceiptIdx:            {Flags: DupSort},
 	TblLogAddressKeys:        {Flags: DupSort},
 	TblLogAddressIdx:         {Flags: DupSort},
 	TblLogTopicsKeys:         {Flags: DupSort},
@@ -754,7 +754,6 @@ var ChaindataTablesCfg = TableCfg{
 }
 
 var BorTablesCfg = TableCfg{
-	BorReceipts:             {Flags: DupSort},
 	BorFinality:             {Flags: DupSort},
 	BorTxLookup:             {Flags: DupSort},
 	BorEvents:               {Flags: DupSort},
@@ -867,7 +866,8 @@ const (
 	StorageDomain    Domain = 1
 	CodeDomain       Domain = 2
 	CommitmentDomain Domain = 3
-	DomainLen        Domain = 4
+	ReceiptDomain    Domain = 4
+	DomainLen        Domain = 5
 )
 
 const (
@@ -875,6 +875,7 @@ const (
 	StorageHistory    History = "StorageHistory"
 	CodeHistory       History = "CodeHistory"
 	CommitmentHistory History = "CommitmentHistory"
+	ReceiptHistory    History = "ReceiptHistory"
 )
 
 const (
@@ -882,6 +883,7 @@ const (
 	StorageHistoryIdx    InvertedIdx = "StorageHistoryIdx"
 	CodeHistoryIdx       InvertedIdx = "CodeHistoryIdx"
 	CommitmentHistoryIdx InvertedIdx = "CommitmentHistoryIdx"
+	ReceiptHistoryIdx    InvertedIdx = "ReceiptHistoryIdx"
 
 	LogTopicIdx   InvertedIdx = "LogTopicIdx"
 	LogAddrIdx    InvertedIdx = "LogAddrIdx"
@@ -896,9 +898,8 @@ const (
 )
 
 const (
-	//ReceiptsAppendable Appendable = 0
-	//AppendableLen      Appendable = 1
-	AppendableLen Appendable = 0
+	ReceiptsAppendable Appendable = 0
+	AppendableLen      Appendable = 0
 )
 
 func (iip InvertedIdxPos) String() string {
@@ -926,6 +927,8 @@ func (d Domain) String() string {
 		return "code"
 	case CommitmentDomain:
 		return "commitment"
+	case ReceiptDomain:
+		return "receipt"
 	default:
 		return "unknown domain"
 	}
@@ -941,6 +944,8 @@ func String2Domain(in string) (Domain, error) {
 		return CodeDomain, nil
 	case "commitment":
 		return CommitmentDomain, nil
+	case "receipt":
+		return ReceiptDomain, nil
 	default:
 		return Domain(MaxUint16), fmt.Errorf("unknown history name: %s", in)
 	}
@@ -950,9 +955,18 @@ const MaxUint16 uint16 = 1<<16 - 1
 
 func (iip Appendable) String() string {
 	switch iip {
-	//case ReceiptsAppendable:
-	//	return "receipts"
+	case ReceiptsAppendable:
+		return "receipts"
 	default:
 		return "unknown Appendable"
+	}
+}
+
+func String2Appendable(in string) (Appendable, error) {
+	switch in {
+	case "receipts":
+		return ReceiptsAppendable, nil
+	default:
+		return Appendable(MaxUint16), fmt.Errorf("unknown Appendable name: %s", in)
 	}
 }

@@ -197,20 +197,20 @@ type visibleFile struct {
 	src *filesItem
 }
 
-func (i *visibleFile) hasTS(ts uint64) bool           { return i.startTxNum <= ts && i.endTxNum > ts }
 func (i *visibleFile) isSubSetOf(j *visibleFile) bool { return i.src.isSubsetOf(j.src) } //nolint
 func (i *visibleFile) isSubsetOf(j *visibleFile) bool { return i.src.isSubsetOf(j.src) } //nolint
 
 func calcVisibleFiles(files *btree2.BTreeG[*filesItem], l idxList, trace bool, toTxNum uint64) (roItems []visibleFile) {
 	newVisibleFiles := make([]visibleFile, 0, files.Len())
+	// trace = true
 	if trace {
-		log.Warn("[dbg] calcVisibleFiles", "amount", files.Len())
+		log.Warn("[dbg] calcVisibleFiles", "amount", files.Len(), "toTxNum", toTxNum)
 	}
 	files.Walk(func(items []*filesItem) bool {
 		for _, item := range items {
 			if item.endTxNum > toTxNum {
 				if trace {
-					log.Warn("[dbg] calcVisibleFiles: more than", "f", item.decompressor.FileName())
+					log.Warn("[dbg] calcVisibleFiles: ends after limit", "f", item.decompressor.FileName(), "limitTxNum", toTxNum)
 				}
 				continue
 			}
@@ -260,6 +260,8 @@ func calcVisibleFiles(files *btree2.BTreeG[*filesItem], l idxList, trace bool, t
 				newVisibleFiles[len(newVisibleFiles)-1].src = nil
 				newVisibleFiles = newVisibleFiles[:len(newVisibleFiles)-1]
 			}
+
+			// log.Warn("willBeVisible", "newVisibleFile", item.decompressor.FileName())
 			newVisibleFiles = append(newVisibleFiles, visibleFile{
 				startTxNum: item.startTxNum,
 				endTxNum:   item.endTxNum,
@@ -299,49 +301,13 @@ func (files visibleFiles) LatestMergedRange() MergeRange {
 	return MergeRange{}
 }
 
-func DetectCompressType(getter *seg.Getter) (compressed FileCompression) {
-	keyCompressed := func() (compressed bool) {
-		defer func() {
-			if rec := recover(); rec != nil {
-				compressed = true
-			}
-		}()
-		getter.Reset(0)
-		for i := 0; i < 100; i++ {
-			if getter.HasNext() {
-				_, _ = getter.NextUncompressed()
-			}
-			if getter.HasNext() {
-				_, _ = getter.Skip()
-			}
-		}
-		return compressed
-	}()
-
-	valCompressed := func() (compressed bool) {
-		defer func() {
-			if rec := recover(); rec != nil {
-				compressed = true
-			}
-		}()
-		getter.Reset(0)
-		for i := 0; i < 100; i++ {
-			if getter.HasNext() {
-				_, _ = getter.Skip()
-			}
-			if getter.HasNext() {
-				_, _ = getter.NextUncompressed()
-			}
-		}
-		return compressed
-	}()
-	getter.Reset(0)
-
-	if keyCompressed {
-		compressed |= CompressKeys
+func (files visibleFiles) MergedRanges() []MergeRange {
+	if len(files) == 0 {
+		return nil
 	}
-	if valCompressed {
-		compressed |= CompressVals
+	res := make([]MergeRange, len(files))
+	for i := len(files) - 1; i >= 0; i-- {
+		res[i] = MergeRange{from: files[i].startTxNum, to: files[i].endTxNum}
 	}
-	return compressed
+	return res
 }

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -31,66 +32,91 @@ import (
 	"github.com/erigontech/erigon/polygon/polygoncommon"
 )
 
+type ServiceConfig struct {
+	Store       Store
+	BorConfig   *borcfg.BorConfig
+	HeimdallURL string
+	Logger      log.Logger
+}
+
 type Service interface {
 	Span(ctx context.Context, id uint64) (*Span, bool, error)
-	CheckpointsFromBlock(ctx context.Context, startBlock uint64) (Waypoints, error)
-	MilestonesFromBlock(ctx context.Context, startBlock uint64) (Waypoints, error)
+	CheckpointsFromBlock(ctx context.Context, startBlock uint64) ([]*Checkpoint, error)
+	MilestonesFromBlock(ctx context.Context, startBlock uint64) ([]*Milestone, error)
 	Producers(ctx context.Context, blockNum uint64) (*valset.ValidatorSet, error)
 	RegisterMilestoneObserver(callback func(*Milestone), opts ...ObserverOption) polygoncommon.UnregisterFunc
 	Run(ctx context.Context) error
-	SynchronizeCheckpoints(ctx context.Context) error
-	SynchronizeMilestones(ctx context.Context) error
+	SynchronizeCheckpoints(ctx context.Context) (latest *Checkpoint, err error)
+	SynchronizeMilestones(ctx context.Context) (latest *Milestone, err error)
 	SynchronizeSpans(ctx context.Context, blockNum uint64) error
+	Ready(ctx context.Context) <-chan error
 }
 
 type service struct {
 	logger                    log.Logger
-	store                     ServiceStore
+	store                     Store
+	reader                    *Reader
 	checkpointScraper         *scraper[*Checkpoint]
 	milestoneScraper          *scraper[*Milestone]
 	spanScraper               *scraper[*Span]
 	spanBlockProducersTracker *spanBlockProducersTracker
+	ready                     ready
 }
 
-func AssembleService(borConfig *borcfg.BorConfig, heimdallUrl string, dataDir string, tmpDir string, logger log.Logger) Service {
-	store := NewMdbxServiceStore(logger, dataDir, tmpDir)
-	client := NewHeimdallClient(heimdallUrl, logger)
-	return NewService(borConfig, client, store, logger)
+func AssembleService(config ServiceConfig) Service {
+	client := NewHeimdallClient(config.HeimdallURL, config.Logger)
+	return NewService(config.BorConfig, client, config.Store, config.Logger)
 }
 
-func NewService(borConfig *borcfg.BorConfig, client HeimdallClient, store ServiceStore, logger log.Logger) Service {
+func NewService(borConfig *borcfg.BorConfig, client HeimdallClient, store Store, logger log.Logger) Service {
 	return newService(borConfig, client, store, logger)
 }
 
-func newService(borConfig *borcfg.BorConfig, client HeimdallClient, store ServiceStore, logger log.Logger) *service {
+var TransientErrors = []error{
+	ErrBadGateway,
+	ErrServiceUnavailable,
+	context.DeadlineExceeded,
+}
+
+func newService(borConfig *borcfg.BorConfig, client HeimdallClient, store Store, logger log.Logger) *service {
 	checkpointFetcher := newCheckpointFetcher(client, logger)
 	milestoneFetcher := newMilestoneFetcher(client, logger)
 	spanFetcher := newSpanFetcher(client, logger)
 
-	checkpointScraper := newScrapper(
+	checkpointScraper := newScraper(
 		store.Checkpoints(),
 		checkpointFetcher,
 		1*time.Second,
+		TransientErrors,
 		logger,
 	)
 
-	milestoneScraper := newScrapper(
+	// ErrNotInMilestoneList transient error configuration is needed because there may be an unfortunate edge
+	// case where FetchFirstMilestoneNum returned 10 but by the time our request reaches heimdall milestone=10
+	// has been already pruned. Additionally, we've been observing this error happening sporadically for the
+	// latest milestone.
+	milestoneScraperTransientErrors := []error{ErrNotInMilestoneList}
+	milestoneScraperTransientErrors = append(milestoneScraperTransientErrors, TransientErrors...)
+	milestoneScraper := newScraper(
 		store.Milestones(),
 		milestoneFetcher,
 		1*time.Second,
+		milestoneScraperTransientErrors,
 		logger,
 	)
 
-	spanScraper := newScrapper(
+	spanScraper := newScraper(
 		store.Spans(),
 		spanFetcher,
 		1*time.Second,
+		TransientErrors,
 		logger,
 	)
 
 	return &service{
 		logger:                    logger,
 		store:                     store,
+		reader:                    NewReader(borConfig, store, logger),
 		checkpointScraper:         checkpointScraper,
 		milestoneScraper:          milestoneScraper,
 		spanScraper:               spanScraper,
@@ -107,30 +133,21 @@ func newCheckpointFetcher(client HeimdallClient, logger log.Logger) entityFetche
 		client.FetchCheckpointCount,
 		client.FetchCheckpoint,
 		client.FetchCheckpoints,
-		10_000, // fetchEntitiesPageLimit
+		CheckpointsFetchLimit,
+		1,
 		logger,
 	)
 }
 
 func newMilestoneFetcher(client HeimdallClient, logger log.Logger) entityFetcher[*Milestone] {
-	fetchEntity := func(ctx context.Context, number int64) (*Milestone, error) {
-		milestone, err := client.FetchMilestone(ctx, number)
-		if errors.Is(err, ErrNotInMilestoneList) {
-			// this is needed because there may be an unfortunate edge case where FetchFirstMilestoneNum returned 10
-			// but by the time our request reaches heimdall milestone=10 has been already pruned
-			// also we've been observing this error happening sporadically for the latest milestone
-			return milestone, fmt.Errorf("%w: %w", errTransientEntityFetcherFailure, err)
-		}
-		return milestone, err
-	}
-
 	return newEntityFetcher(
 		"MilestoneFetcher",
 		client.FetchFirstMilestoneNum,
 		client.FetchMilestoneCount,
-		fetchEntity,
+		client.FetchMilestone,
 		nil,
 		0,
+		1,
 		logger,
 	)
 }
@@ -155,27 +172,24 @@ func newSpanFetcher(client HeimdallClient, logger log.Logger) entityFetcher[*Spa
 		},
 		fetchLastEntityId,
 		fetchEntity,
-		nil,
+		client.FetchSpans,
+		SpansFetchLimit,
 		0,
 		logger,
 	)
 }
 
 func (s *service) Span(ctx context.Context, id uint64) (*Span, bool, error) {
-	return s.store.Spans().Entity(ctx, id)
+	return s.reader.Span(ctx, id)
 }
 
-func castEntityToWaypoint[TEntity Waypoint](entity TEntity) Waypoint {
-	return entity
-}
-
-func (s *service) SynchronizeCheckpoints(ctx context.Context) error {
-	s.logger.Debug(heimdallLogPrefix("synchronizing checkpoints..."))
+func (s *service) SynchronizeCheckpoints(ctx context.Context) (*Checkpoint, error) {
+	s.logger.Info(heimdallLogPrefix("synchronizing checkpoints..."))
 	return s.checkpointScraper.Synchronize(ctx)
 }
 
-func (s *service) SynchronizeMilestones(ctx context.Context) error {
-	s.logger.Debug(heimdallLogPrefix("synchronizing milestones..."))
+func (s *service) SynchronizeMilestones(ctx context.Context) (*Milestone, error) {
+	s.logger.Info(heimdallLogPrefix("synchronizing milestones..."))
 	return s.milestoneScraper.Synchronize(ctx)
 }
 
@@ -206,7 +220,7 @@ func (s *service) SynchronizeSpans(ctx context.Context, blockNum uint64) error {
 }
 
 func (s *service) synchronizeSpans(ctx context.Context) error {
-	if err := s.spanScraper.Synchronize(ctx); err != nil {
+	if _, err := s.spanScraper.Synchronize(ctx); err != nil {
 		return err
 	}
 
@@ -217,18 +231,16 @@ func (s *service) synchronizeSpans(ctx context.Context) error {
 	return nil
 }
 
-func (s *service) CheckpointsFromBlock(ctx context.Context, startBlock uint64) (Waypoints, error) {
-	entities, err := s.store.Checkpoints().RangeFromBlockNum(ctx, startBlock)
-	return libcommon.SliceMap(entities, castEntityToWaypoint[*Checkpoint]), err
+func (s *service) CheckpointsFromBlock(ctx context.Context, startBlock uint64) ([]*Checkpoint, error) {
+	return s.reader.CheckpointsFromBlock(ctx, startBlock)
 }
 
-func (s *service) MilestonesFromBlock(ctx context.Context, startBlock uint64) (Waypoints, error) {
-	entities, err := s.store.Milestones().RangeFromBlockNum(ctx, startBlock)
-	return libcommon.SliceMap(entities, castEntityToWaypoint[*Milestone]), err
+func (s *service) MilestonesFromBlock(ctx context.Context, startBlock uint64) ([]*Milestone, error) {
+	return s.reader.MilestonesFromBlock(ctx, startBlock)
 }
 
 func (s *service) Producers(ctx context.Context, blockNum uint64) (*valset.ValidatorSet, error) {
-	return s.spanBlockProducersTracker.Producers(ctx, blockNum)
+	return s.reader.Producers(ctx, blockNum)
 }
 
 func (s *service) RegisterMilestoneObserver(callback func(*Milestone), opts ...ObserverOption) polygoncommon.UnregisterFunc {
@@ -249,12 +261,64 @@ func (s *service) RegisterSpanObserver(callback func(*Span), opts ...ObserverOpt
 	})
 }
 
+type ready struct {
+	mu     sync.Mutex
+	on     chan struct{}
+	state  bool
+	inited bool
+}
+
+func (r *ready) On() <-chan struct{} {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.init()
+	return r.on
+}
+
+func (r *ready) init() {
+	if r.inited {
+		return
+	}
+	r.on = make(chan struct{})
+	r.inited = true
+}
+
+func (r *ready) set() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.init()
+	if r.state {
+		return
+	}
+	r.state = true
+	close(r.on)
+}
+
+func (s *service) Ready(ctx context.Context) <-chan error {
+	errc := make(chan error)
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			errc <- ctx.Err()
+		case <-s.ready.On():
+			errc <- nil
+		}
+
+		close(errc)
+	}()
+
+	return errc
+}
+
 func (s *service) Run(ctx context.Context) error {
 	defer s.store.Close()
 
 	if err := s.store.Prepare(ctx); err != nil {
 		return nil
 	}
+
+	s.ready.set()
 
 	if err := s.replayUntrackedSpans(ctx); err != nil {
 		return err
@@ -265,10 +329,45 @@ func (s *service) Run(ctx context.Context) error {
 	})
 
 	eg, ctx := errgroup.WithContext(ctx)
-	eg.Go(func() error { return s.checkpointScraper.Run(ctx) })
-	eg.Go(func() error { return s.milestoneScraper.Run(ctx) })
-	eg.Go(func() error { return s.spanScraper.Run(ctx) })
-	eg.Go(func() error { return s.spanBlockProducersTracker.Run(ctx) })
+	eg.Go(func() error {
+		err := s.checkpointScraper.Run(ctx)
+
+		if err != nil {
+			err = fmt.Errorf("checkpoint scraper failed: %w", err)
+		}
+
+		return err
+	})
+	eg.Go(func() error {
+		err := s.milestoneScraper.Run(ctx)
+
+		if err != nil {
+			err = fmt.Errorf("milestone scraper failed: %w", err)
+		}
+
+		return err
+
+	})
+	eg.Go(func() error {
+		err := s.spanScraper.Run(ctx)
+
+		if err != nil {
+			err = fmt.Errorf("span scraper failed: %w", err)
+		}
+
+		return err
+
+	})
+	eg.Go(func() error {
+		err := s.spanBlockProducersTracker.Run(ctx)
+
+		if err != nil {
+			err = fmt.Errorf("span producer tracker failed: %w", err)
+		}
+
+		return err
+
+	})
 	return eg.Wait()
 }
 

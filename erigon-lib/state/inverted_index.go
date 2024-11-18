@@ -30,6 +30,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -86,7 +87,7 @@ type InvertedIndex struct {
 
 	noFsync bool // fsync is enabled by default, but tests can manually disable
 
-	compression FileCompression
+	compression seg.FileCompression
 
 	compressCfg seg.Cfg
 	indexList   idxList
@@ -119,7 +120,7 @@ func NewInvertedIndex(cfg iiCfg, aggregationStep uint64, filenameBase, indexKeys
 		compressCfg:     compressCfg,
 		integrityCheck:  integrityCheck,
 		logger:          logger,
-		compression:     CompressNone,
+		compression:     seg.CompressNone,
 	}
 	ii.indexList = withHashMap
 
@@ -143,6 +144,9 @@ func filesFromDir(dir string) ([]string, error) {
 	filtered := make([]string, 0, len(allFiles))
 	for _, f := range allFiles {
 		if f.IsDir() || !f.Type().IsRegular() {
+			continue
+		}
+		if strings.HasPrefix(f.Name(), ".") { // hidden files
 			continue
 		}
 		filtered = append(filtered, f.Name())
@@ -344,15 +348,19 @@ func (ii *InvertedIndex) openDirtyFiles() error {
 }
 
 func (ii *InvertedIndex) closeWhatNotInList(fNames []string) {
+	protectFiles := make(map[string]struct{}, len(fNames))
+	for _, f := range fNames {
+		protectFiles[f] = struct{}{}
+	}
 	var toClose []*filesItem
 	ii.dirtyFiles.Walk(func(items []*filesItem) bool {
-	Loop1:
 		for _, item := range items {
-			for _, protectName := range fNames {
-				if item.decompressor != nil && item.decompressor.FileName() == protectName {
-					continue Loop1
+			if item.decompressor != nil {
+				if _, ok := protectFiles[item.decompressor.FileName()]; ok {
+					continue
 				}
 			}
+
 			toClose = append(toClose, item)
 		}
 		return true
@@ -524,6 +532,10 @@ type MergeRange struct {
 	to        uint64
 }
 
+func (mr *MergeRange) FromTo() (uint64, uint64) {
+	return mr.from, mr.to
+}
+
 func (mr *MergeRange) String(prefix string, aggStep uint64) string {
 	if prefix != "" {
 		prefix += "="
@@ -539,7 +551,7 @@ type InvertedIndexRoTx struct {
 	ii      *InvertedIndex
 	files   visibleFiles
 	visible *iiVisible
-	getters []ArchiveGetter
+	getters []*seg.Reader
 	readers []*recsplit.IndexReader
 
 	seekInFilesCache *IISeekInFilesCache
@@ -552,14 +564,14 @@ func (iit *InvertedIndexRoTx) hashKey(k []byte) (uint64, uint64) {
 	return murmur3.Sum128WithSeed(k, *iit.ii.salt)
 }
 
-func (iit *InvertedIndexRoTx) statelessGetter(i int) ArchiveGetter {
+func (iit *InvertedIndexRoTx) statelessGetter(i int) *seg.Reader {
 	if iit.getters == nil {
-		iit.getters = make([]ArchiveGetter, len(iit.files))
+		iit.getters = make([]*seg.Reader, len(iit.files))
 	}
 	r := iit.getters[i]
 	if r == nil {
 		g := iit.files[i].src.decompressor.MakeGetter()
-		r = NewArchiveGetter(g, iit.ii.compression)
+		r = seg.NewReader(g, iit.ii.compression)
 		iit.getters[i] = r
 	}
 	return r
@@ -592,7 +604,7 @@ func (iit *InvertedIndexRoTx) seekInFiles(key []byte, txNum uint64) (found bool,
 
 	if iit.seekInFilesCache != nil {
 		iit.seekInFilesCache.total++
-		fromCache, ok := iit.seekInFilesCache.Get(u128{hi: hi, lo: lo})
+		fromCache, ok := iit.seekInFilesCache.Get(hi)
 		if ok && fromCache.requested <= txNum {
 			if txNum <= fromCache.found {
 				iit.seekInFilesCache.hit++
@@ -624,14 +636,14 @@ func (iit *InvertedIndexRoTx) seekInFiles(key []byte, txNum uint64) (found bool,
 
 		if found {
 			if iit.seekInFilesCache != nil {
-				iit.seekInFilesCache.Add(u128{hi: hi, lo: lo}, iiSeekInFilesCacheItem{requested: txNum, found: equalOrHigherTxNum})
+				iit.seekInFilesCache.Add(hi, iiSeekInFilesCacheItem{requested: txNum, found: equalOrHigherTxNum})
 			}
 			return true, equalOrHigherTxNum
 		}
 	}
 
 	if iit.seekInFilesCache != nil {
-		iit.seekInFilesCache.Add(u128{hi: hi, lo: lo}, iiSeekInFilesCacheItem{requested: txNum, found: 0})
+		iit.seekInFilesCache.Add(hi, iiSeekInFilesCacheItem{requested: txNum, found: 0})
 	}
 	return false, 0
 }
@@ -1311,9 +1323,9 @@ func (it *InvertedIterator1) advanceInFiles() {
 		}
 		if !bytes.Equal(key, it.key) {
 			ef, _ := eliasfano32.ReadEliasFano(val)
-			min := ef.Get(0)
-			max := ef.Max()
-			if min < it.endTxNum && max >= it.startTxNum { // Intersection of [min; max) and [it.startTxNum; it.endTxNum)
+			_min := ef.Get(0)
+			_max := ef.Max()
+			if _min < it.endTxNum && _max >= it.startTxNum { // Intersection of [min; max) and [it.startTxNum; it.endTxNum)
 				it.key = key
 				it.nextFileKey = key
 				return
@@ -1412,7 +1424,7 @@ func (iit *InvertedIndexRoTx) IterateChangedKeys(startTxNum, endTxNum uint64, ro
 		if item.endTxNum >= endTxNum {
 			ii1.hasNextInDb = false
 		}
-		g := NewArchiveGetter(item.src.decompressor.MakeGetter(), iit.ii.compression)
+		g := seg.NewReader(item.src.decompressor.MakeGetter(), iit.ii.compression)
 		if g.HasNext() {
 			key, _ := g.Next(nil)
 			heap.Push(&ii1.h, &ReconItem{startTxNum: item.startTxNum, endTxNum: item.endTxNum, g: g, txNum: ^item.endTxNum, key: key})
@@ -1482,7 +1494,7 @@ func (ii *InvertedIndex) collate(ctx context.Context, step uint64, roTx kv.Tx) (
 	if err != nil {
 		return InvertedIndexCollation{}, fmt.Errorf("create %s compressor: %w", ii.filenameBase, err)
 	}
-	coll.writer = NewArchiveWriter(comp, ii.compression)
+	coll.writer = seg.NewWriter(comp, ii.compression)
 
 	var (
 		prevEf      []byte
@@ -1560,7 +1572,7 @@ func (sf InvertedFiles) CleanupOnError() {
 
 type InvertedIndexCollation struct {
 	iiPath string
-	writer ArchiveWriter
+	writer *seg.Writer
 }
 
 func (ic InvertedIndexCollation) Close() {

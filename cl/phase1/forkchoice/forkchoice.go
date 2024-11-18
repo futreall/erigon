@@ -56,8 +56,6 @@ type ForkNode struct {
 	ExecutionBlock libcommon.Hash `json:"execution_block_hash"`
 }
 
-type checkpointComparable string
-
 const (
 	checkpointsPerCache = 1024
 	allowedCachedStates = 8
@@ -121,7 +119,7 @@ type ForkChoiceStore struct {
 	randaoMixesLists *lru.Cache[libcommon.Hash, solid.HashListSSZ] // limited randao mixes full list (only 16 elements)
 	randaoDeltas     *lru.Cache[libcommon.Hash, randaoDelta]       // small entry can be lots of elements.
 	// participation tracking
-	participation *lru.Cache[uint64, *solid.BitList] // epoch -> [partecipation]
+	participation *lru.Cache[uint64, *solid.ParticipationBitList] // epoch -> [participation]
 
 	mu sync.RWMutex
 
@@ -135,9 +133,10 @@ type ForkChoiceStore struct {
 	emitters *beaconevents.EventEmitter
 	synced   atomic.Bool
 
-	ethClock         eth_clock.EthereumClock
-	optimisticStore  optimistic.OptimisticStore
-	validatorMonitor monitor.ValidatorMonitor
+	ethClock                eth_clock.EthereumClock
+	optimisticStore         optimistic.OptimisticStore
+	validatorMonitor        monitor.ValidatorMonitor
+	probabilisticHeadGetter bool
 }
 
 type LatestMessage struct {
@@ -161,15 +160,17 @@ func NewForkChoiceStore(
 	syncedDataManager *synced_data.SyncedDataManager,
 	blobStorage blob_storage.BlobStorage,
 	validatorMonitor monitor.ValidatorMonitor,
+	probabilisticHeadGetter bool,
 ) (*ForkChoiceStore, error) {
 	anchorRoot, err := anchorState.BlockRoot()
 	if err != nil {
 		return nil, err
 	}
-	anchorCheckpoint := solid.NewCheckpointFromParameters(
-		anchorRoot,
-		state2.Epoch(anchorState.BeaconState),
-	)
+
+	anchorCheckpoint := solid.Checkpoint{
+		Root:  anchorRoot,
+		Epoch: state2.Epoch(anchorState.BeaconState),
+	}
 
 	eth2Roots, err := lru.New[libcommon.Hash, libcommon.Hash](checkpointsPerCache)
 	if err != nil {
@@ -215,7 +216,7 @@ func NewForkChoiceStore(
 		return nil, err
 	}
 
-	participation, err := lru.New[uint64, *solid.BitList](16)
+	participation, err := lru.New[uint64, *solid.ParticipationBitList](16)
 	if err != nil {
 		return nil, err
 	}
@@ -234,37 +235,38 @@ func NewForkChoiceStore(
 	headSet := make(map[libcommon.Hash]struct{})
 	headSet[anchorRoot] = struct{}{}
 	f := &ForkChoiceStore{
-		forkGraph:             forkGraph,
-		equivocatingIndicies:  make([]byte, anchorState.ValidatorLength(), anchorState.ValidatorLength()*2),
-		latestMessages:        make([]LatestMessage, anchorState.ValidatorLength(), anchorState.ValidatorLength()*2),
-		eth2Roots:             eth2Roots,
-		engine:                engine,
-		operationsPool:        operationsPool,
-		anchorPublicKeys:      anchorPublicKeys,
-		beaconCfg:             anchorState.BeaconConfig(),
-		preverifiedSizes:      preverifiedSizes,
-		finalityCheckpoints:   finalityCheckpoints,
-		totalActiveBalances:   totalActiveBalances,
-		randaoMixesLists:      randaoMixesLists,
-		randaoDeltas:          randaoDeltas,
-		headSet:               headSet,
-		weights:               make(map[libcommon.Hash]uint64),
-		participation:         participation,
-		emitters:              emitters,
-		genesisTime:           anchorState.GenesisTime(),
-		syncedDataManager:     syncedDataManager,
-		nextBlockProposers:    nextBlockProposers,
-		genesisValidatorsRoot: anchorState.GenesisValidatorsRoot(),
-		hotSidecars:           make(map[libcommon.Hash][]*cltypes.BlobSidecar),
-		blobStorage:           blobStorage,
-		ethClock:              ethClock,
-		optimisticStore:       optimistic.NewOptimisticStore(),
-		validatorMonitor:      validatorMonitor,
+		forkGraph:               forkGraph,
+		equivocatingIndicies:    make([]byte, anchorState.ValidatorLength(), anchorState.ValidatorLength()*2),
+		latestMessages:          make([]LatestMessage, anchorState.ValidatorLength(), anchorState.ValidatorLength()*2),
+		eth2Roots:               eth2Roots,
+		engine:                  engine,
+		operationsPool:          operationsPool,
+		anchorPublicKeys:        anchorPublicKeys,
+		beaconCfg:               anchorState.BeaconConfig(),
+		preverifiedSizes:        preverifiedSizes,
+		finalityCheckpoints:     finalityCheckpoints,
+		totalActiveBalances:     totalActiveBalances,
+		randaoMixesLists:        randaoMixesLists,
+		randaoDeltas:            randaoDeltas,
+		headSet:                 headSet,
+		weights:                 make(map[libcommon.Hash]uint64),
+		participation:           participation,
+		emitters:                emitters,
+		genesisTime:             anchorState.GenesisTime(),
+		syncedDataManager:       syncedDataManager,
+		nextBlockProposers:      nextBlockProposers,
+		genesisValidatorsRoot:   anchorState.GenesisValidatorsRoot(),
+		hotSidecars:             make(map[libcommon.Hash][]*cltypes.BlobSidecar),
+		blobStorage:             blobStorage,
+		ethClock:                ethClock,
+		optimisticStore:         optimistic.NewOptimisticStore(),
+		validatorMonitor:        validatorMonitor,
+		probabilisticHeadGetter: probabilisticHeadGetter,
 	}
-	f.justifiedCheckpoint.Store(anchorCheckpoint.Copy())
-	f.finalizedCheckpoint.Store(anchorCheckpoint.Copy())
-	f.unrealizedFinalizedCheckpoint.Store(anchorCheckpoint.Copy())
-	f.unrealizedJustifiedCheckpoint.Store(anchorCheckpoint.Copy())
+	f.justifiedCheckpoint.Store(anchorCheckpoint)
+	f.finalizedCheckpoint.Store(anchorCheckpoint)
+	f.unrealizedFinalizedCheckpoint.Store(anchorCheckpoint)
+	f.unrealizedJustifiedCheckpoint.Store(anchorCheckpoint)
 	f.proposerBoostRoot.Store(libcommon.Hash{})
 
 	f.highestSeen.Store(anchorState.Slot())
@@ -317,7 +319,7 @@ func (f *ForkChoiceStore) JustifiedCheckpoint() solid.Checkpoint {
 
 // FinalizedCheckpoint returns justified checkpoint
 func (f *ForkChoiceStore) JustifiedSlot() uint64 {
-	return f.computeStartSlotAtEpoch(f.justifiedCheckpoint.Load().(solid.Checkpoint).Epoch())
+	return f.computeStartSlotAtEpoch(f.justifiedCheckpoint.Load().(solid.Checkpoint).Epoch)
 }
 
 // FinalizedCheckpoint returns justified checkpoint
@@ -327,7 +329,7 @@ func (f *ForkChoiceStore) FinalizedCheckpoint() solid.Checkpoint {
 
 // FinalizedCheckpoint returns justified checkpoint
 func (f *ForkChoiceStore) FinalizedSlot() uint64 {
-	return f.computeStartSlotAtEpoch(f.finalizedCheckpoint.Load().(solid.Checkpoint).Epoch()) + (f.beaconCfg.SlotsPerEpoch - 1)
+	return f.computeStartSlotAtEpoch(f.finalizedCheckpoint.Load().(solid.Checkpoint).Epoch) + (f.beaconCfg.SlotsPerEpoch - 1)
 }
 
 // FinalizedCheckpoint returns justified checkpoint
@@ -381,19 +383,15 @@ func (f *ForkChoiceStore) PreverifiedHistoricalSummaries(blockRoot libcommon.Has
 	return 0
 }
 
-func (f *ForkChoiceStore) GetFinalityCheckpoints(blockRoot libcommon.Hash) (bool, solid.Checkpoint, solid.Checkpoint, solid.Checkpoint) {
+func (f *ForkChoiceStore) GetFinalityCheckpoints(blockRoot libcommon.Hash) (solid.Checkpoint, solid.Checkpoint, solid.Checkpoint, bool) {
 	if ret, ok := f.finalityCheckpoints.Get(blockRoot); ok {
-		return true, ret.finalizedCheckpoint, ret.currentJustifiedCheckpoint, ret.previousJustifiedCheckpoint
+		return ret.finalizedCheckpoint, ret.currentJustifiedCheckpoint, ret.previousJustifiedCheckpoint, true
 	}
-	return false, solid.Checkpoint{}, solid.Checkpoint{}, solid.Checkpoint{}
+	return solid.Checkpoint{}, solid.Checkpoint{}, solid.Checkpoint{}, false
 }
 
 func (f *ForkChoiceStore) GetSyncCommittees(period uint64) (*solid.SyncCommittee, *solid.SyncCommittee, bool) {
 	return f.forkGraph.GetSyncCommittees(period)
-}
-
-func (f *ForkChoiceStore) GetBeaconCommitee(slot, committeeIndex uint64) ([]uint64, error) {
-	return f.syncedDataManager.HeadState().GetBeaconCommitee(slot, committeeIndex)
 }
 
 func (f *ForkChoiceStore) BlockRewards(root libcommon.Hash) (*eth2.BlockRewardsCollector, bool) {
@@ -404,10 +402,10 @@ func (f *ForkChoiceStore) TotalActiveBalance(root libcommon.Hash) (uint64, bool)
 	return f.totalActiveBalances.Get(root)
 }
 
-func (f *ForkChoiceStore) LowestAvaiableSlot() uint64 {
+func (f *ForkChoiceStore) LowestAvailableSlot() uint64 {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
-	return f.forkGraph.LowestAvaiableSlot()
+	return f.forkGraph.LowestAvailableSlot()
 }
 
 func (f *ForkChoiceStore) RandaoMixes(blockRoot libcommon.Hash, out solid.HashListSSZ) bool {
@@ -443,7 +441,7 @@ func (f *ForkChoiceStore) RandaoMixes(blockRoot libcommon.Hash, out solid.HashLi
 	return true
 }
 
-func (f *ForkChoiceStore) Partecipation(epoch uint64) (*solid.BitList, bool) {
+func (f *ForkChoiceStore) Participation(epoch uint64) (*solid.ParticipationBitList, bool) {
 	return f.participation.Get(epoch)
 }
 
@@ -470,8 +468,8 @@ func (f *ForkChoiceStore) ForkNodes() []ForkNode {
 			Weight:         weight,
 			BlockRoot:      blockRoot,
 			ParentRoot:     header.ParentRoot,
-			JustifiedEpoch: justifiedCheckpoint.Epoch(),
-			FinalizedEpoch: finalizedCheckpoint.Epoch(),
+			JustifiedEpoch: justifiedCheckpoint.Epoch,
+			FinalizedEpoch: finalizedCheckpoint.Epoch,
 			Slot:           header.Slot,
 			Validity:       "valid",
 			ExecutionBlock: blockHash,
@@ -515,16 +513,16 @@ func (f *ForkChoiceStore) GetInactivitiesScores(blockRoot libcommon.Hash) (solid
 	return f.forkGraph.GetInactivitiesScores(blockRoot)
 }
 
-func (f *ForkChoiceStore) GetPreviousPartecipationIndicies(blockRoot libcommon.Hash) (*solid.BitList, error) {
-	return f.forkGraph.GetPreviousPartecipationIndicies(blockRoot)
+func (f *ForkChoiceStore) GetPreviousParticipationIndicies(blockRoot libcommon.Hash) (*solid.ParticipationBitList, error) {
+	return f.forkGraph.GetPreviousParticipationIndicies(blockRoot)
 }
 
 func (f *ForkChoiceStore) GetValidatorSet(blockRoot libcommon.Hash) (*solid.ValidatorSet, error) {
 	return f.forkGraph.GetValidatorSet(blockRoot)
 }
 
-func (f *ForkChoiceStore) GetCurrentPartecipationIndicies(blockRoot libcommon.Hash) (*solid.BitList, error) {
-	return f.forkGraph.GetCurrentPartecipationIndicies(blockRoot)
+func (f *ForkChoiceStore) GetCurrentParticipationIndicies(blockRoot libcommon.Hash) (*solid.ParticipationBitList, error) {
+	return f.forkGraph.GetCurrentParticipationIndicies(blockRoot)
 }
 
 func (f *ForkChoiceStore) IsRootOptimistic(root libcommon.Hash) bool {
@@ -536,13 +534,7 @@ func (f *ForkChoiceStore) IsHeadOptimistic() bool {
 		return false
 	}
 
-	headState := f.syncedDataManager.HeadState()
-	if headState == nil {
-		return true
-	}
-	// get latest root
-	latestRoot := headState.LatestBlockHeader().Root
-	return f.optimisticStore.IsOptimistic(latestRoot)
+	return f.optimisticStore.IsOptimistic(f.syncedDataManager.HeadRoot())
 }
 
 func (f *ForkChoiceStore) DumpBeaconStateOnDisk(bs *state.CachingBeaconState) error {

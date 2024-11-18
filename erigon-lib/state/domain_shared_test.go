@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"math/rand"
 	"testing"
 	"time"
 
@@ -36,6 +35,8 @@ import (
 )
 
 func TestSharedDomain_CommitmentKeyReplacement(t *testing.T) {
+	t.Parallel()
+
 	stepSize := uint64(100)
 	db, agg := testDbAndAggregatorv3(t, stepSize)
 
@@ -51,7 +52,7 @@ func TestSharedDomain_CommitmentKeyReplacement(t *testing.T) {
 	require.NoError(t, err)
 	defer domains.Close()
 
-	rnd := rand.New(rand.NewSource(2342))
+	rnd := newRnd(2342)
 	maxTx := stepSize * 8
 
 	// 1. generate data
@@ -109,6 +110,8 @@ func TestSharedDomain_CommitmentKeyReplacement(t *testing.T) {
 }
 
 func TestSharedDomain_Unwind(t *testing.T) {
+	t.Parallel()
+
 	stepSize := uint64(100)
 	db, agg := testDbAndAggregatorv3(t, stepSize)
 
@@ -130,7 +133,7 @@ func TestSharedDomain_Unwind(t *testing.T) {
 	maxTx := stepSize
 	hashes := make([][]byte, maxTx)
 	count := 10
-	rnd := rand.New(rand.NewSource(0))
+	rnd := newRnd(0)
 	ac.Close()
 	err = rwTx.Commit()
 	require.NoError(t, err)
@@ -176,7 +179,7 @@ Loop:
 	err = domains.Flush(ctx, rwTx)
 	require.NoError(t, err)
 
-	unwindTo := uint64(commitStep * rnd.Intn(int(maxTx)/commitStep))
+	unwindTo := uint64(commitStep * rnd.IntN(int(maxTx)/commitStep))
 	domains.currentChangesAccumulator = nil
 
 	acu := agg.BeginFilesRo()
@@ -203,6 +206,8 @@ Loop:
 }
 
 func TestSharedDomain_IteratePrefix(t *testing.T) {
+	t.Parallel()
+
 	stepSize := uint64(8)
 	require := require.New(t)
 	db, agg := testDbAndAggregatorv3(t, stepSize)
@@ -371,6 +376,8 @@ func TestSharedDomain_IteratePrefix(t *testing.T) {
 }
 
 func TestSharedDomain_StorageIter(t *testing.T) {
+	t.Parallel()
+
 	log.Root().SetHandler(log.LvlFilterHandler(log.LvlWarn, log.StderrHandler))
 
 	stepSize := uint64(10)

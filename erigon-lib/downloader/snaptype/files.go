@@ -152,6 +152,8 @@ func parseFileName(dir, fileName string) (res FileInfo, ok bool) {
 		return
 	}
 	res.To = to * 1_000
+	res.TypeString = parts[3]
+
 	res.Type, ok = ParseFileType(parts[3])
 	if !ok {
 		return res, ok
@@ -206,7 +208,7 @@ func AllV2Extensions() []string {
 }
 
 func SeedableV3Extensions() []string {
-	return []string{".kv", ".v", ".ef"}
+	return []string{".kv", ".v", ".ef", ".ap"}
 }
 
 func AllV3Extensions() []string {
@@ -214,7 +216,7 @@ func AllV3Extensions() []string {
 }
 
 func IsSeedableExtension(name string) bool {
-	for _, ext := range append(SeedableV2Extensions(), SeedableV3Extensions()...) {
+	for _, ext := range append(AllV2Extensions(), AllV3Extensions()...) {
 		if strings.HasSuffix(name, ext) {
 			return true
 		}
@@ -232,6 +234,7 @@ const Erigon3SeedableSteps = 64
 //     less files - means small files will be removed after merge (no peers for this files).
 const Erigon2OldMergeLimit = 500_000
 const Erigon2MergeLimit = 100_000
+const CaplinMergeLimit = 10_000
 const Erigon2MinSegmentSize = 1_000
 
 var MergeSteps = []uint64{100_000, 10_000}
@@ -242,6 +245,7 @@ type FileInfo struct {
 	From, To        uint64
 	name, Path, Ext string
 	Type            Type
+	TypeString      string // This is for giulio's generic snapshots
 }
 
 func (f FileInfo) TorrentFileExists() (bool, error) { return dir.FileExist(f.Path + ".torrent") }
@@ -249,6 +253,9 @@ func (f FileInfo) TorrentFileExists() (bool, error) { return dir.FileExist(f.Pat
 func (f FileInfo) Name() string { return f.name }
 func (f FileInfo) Dir() string  { return filepath.Dir(f.Path) }
 func (f FileInfo) Len() uint64  { return f.To - f.From }
+
+func (f FileInfo) GetRange() (from, to uint64) { return f.From, f.To }
+func (f FileInfo) GetType() Type               { return f.Type }
 
 func (f FileInfo) CompareTo(o FileInfo) int {
 	if res := cmp.Compare(f.From, o.From); res != 0 {

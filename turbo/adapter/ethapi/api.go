@@ -30,11 +30,11 @@ import (
 	libcommon "github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/hexutil"
 	"github.com/erigontech/erigon-lib/common/hexutility"
+	"github.com/erigontech/erigon-lib/common/math"
 	"github.com/erigontech/erigon-lib/log/v3"
 	types2 "github.com/erigontech/erigon-lib/types"
 
 	"github.com/erigontech/erigon/accounts/abi"
-	"github.com/erigontech/erigon/common/math"
 	"github.com/erigontech/erigon/core/types"
 	"github.com/erigontech/erigon/core/vm/evmtypes"
 	"github.com/erigontech/erigon/eth/tracers/logger"
@@ -307,8 +307,8 @@ func RPCMarshalHeader(head *types.Header) map[string]interface{} {
 	if head.ParentBeaconBlockRoot != nil {
 		result["parentBeaconBlockRoot"] = head.ParentBeaconBlockRoot
 	}
-	if head.RequestsRoot != nil {
-		result["requestsRoot"] = head.RequestsRoot
+	if head.RequestsHash != nil {
+		result["requestsHash"] = head.RequestsHash
 	}
 
 	return result
@@ -367,36 +367,8 @@ func RPCMarshalBlockExDeprecated(block *types.Block, inclTx bool, fullTx bool, b
 		fields["withdrawals"] = block.Withdrawals()
 	}
 
-	if block.Requests() != nil {
-		fields["requests"] = block.Requests()
-	}
-
 	return fields, nil
 }
-
-/*
-
-// rpcMarshalHeader uses the generalized output filler, then adds the total difficulty field, which requires
-// a `PublicBlockchainAPI`.
-func (s *PublicBlockChainAPI) rpcMarshalHeader(ctx context.Context, header *types.Header) map[string]interface{} {
-	fields := RPCMarshalHeader(header)
-	fields["totalDifficulty"] = (*hexutil.Big)(s.b.GetTd(ctx, header.Hash()))
-	return fields
-}
-
-// rpcMarshalBlock uses the generalized output filler, then adds the total difficulty field, which requires
-// a `PublicBlockchainAPI`.
-func (s *PublicBlockChainAPI) rpcMarshalBlock(ctx context.Context, b *types.Block, inclTx bool, fullTx bool) (map[string]interface{}, error) {
-	fields, err := RPCMarshalBlock(b, inclTx, fullTx)
-	if err != nil {
-		return nil, err
-	}
-	if inclTx {
-		fields["totalDifficulty"] = (*hexutil.Big)(s.b.GetTd(ctx, b.Hash()))
-	}
-	return fields, err
-}
-*/
 
 // RPCTransaction represents a transaction that will serialize to the RPC representation of a transaction
 type RPCTransaction struct {

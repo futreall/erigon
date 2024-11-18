@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"math/big"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -112,21 +114,41 @@ type blockDownloader struct {
 }
 
 func (d *blockDownloader) DownloadBlocksUsingCheckpoints(ctx context.Context, start uint64) (*types.Header, error) {
-	waypoints, err := d.waypointReader.CheckpointsFromBlock(ctx, start)
+	checkpoints, err := d.waypointReader.CheckpointsFromBlock(ctx, start)
 	if err != nil {
 		return nil, err
 	}
 
-	return d.downloadBlocksUsingWaypoints(ctx, waypoints, d.checkpointVerifier)
+	return d.downloadBlocksUsingWaypoints(ctx, heimdall.AsWaypoints(checkpoints), d.checkpointVerifier)
 }
 
 func (d *blockDownloader) DownloadBlocksUsingMilestones(ctx context.Context, start uint64) (*types.Header, error) {
-	waypoints, err := d.waypointReader.MilestonesFromBlock(ctx, start)
+	milestones, err := d.waypointReader.MilestonesFromBlock(ctx, start)
 	if err != nil {
 		return nil, err
 	}
 
-	return d.downloadBlocksUsingWaypoints(ctx, waypoints, d.milestoneVerifier)
+	if len(milestones) == 0 {
+		return nil, nil
+	}
+
+	if firstMilestoneStart := milestones[0].StartBlock().Uint64(); start < firstMilestoneStart {
+		// Note this can happen (rarely, but it has happened) on initial sync if there is
+		// a gap between the last downloaded checkpoint EndBlock and the StartBlock of the oldest
+		// milestone that we have scrapped. We fill the gap by overriding the StartBlock of the milestone.
+		// We are safe to do so because the RootHash of the milestone is in fact the last block of the milestone
+		// range meaning that we can fetch an extended block range without failing the root hash check.
+		d.logger.Warn(
+			syncLogPrefix("gap between start and first milestone, overriding milestone start"),
+			"start", start,
+			"firstMilestoneStart", firstMilestoneStart,
+			"gap", firstMilestoneStart-start,
+		)
+
+		milestones[0].Fields.StartBlock = new(big.Int).SetUint64(start)
+	}
+
+	return d.downloadBlocksUsingWaypoints(ctx, heimdall.AsWaypoints(milestones), d.milestoneVerifier)
 }
 
 func (d *blockDownloader) downloadBlocksUsingWaypoints(
@@ -255,7 +277,7 @@ func (d *blockDownloader) downloadBlocksUsingWaypoints(
 		gapIndex := -1
 		for i, blockBatch := range blockBatches {
 			if len(blockBatch) == 0 {
-				d.logger.Debug(
+				d.logger.Info(
 					syncLogPrefix("no blocks - will try again"),
 					"start", waypointsBatch[i].StartBlock(),
 					"end", waypointsBatch[i].EndBlock(),
@@ -285,10 +307,18 @@ func (d *blockDownloader) downloadBlocksUsingWaypoints(
 			continue
 		}
 
-		d.logger.Debug(syncLogPrefix("fetched blocks"), "len", len(blocks), "duration", time.Since(batchFetchStartTime))
+		d.logger.Debug(syncLogPrefix("fetched blocks"), "start", blocks[0].NumberU64(), "end", blocks[len(blocks)-1].NumberU64(),
+			"blocks", len(blocks),
+			"duration", time.Since(batchFetchStartTime),
+			"blks/sec", float64(len(blocks))/math.Max(time.Since(batchFetchStartTime).Seconds(), 0.0001))
 
 		batchFetchStartTime = time.Now() // reset for next time
 
+		d.logger.Info(
+			syncLogPrefix(fmt.Sprintf("inserting %d fetched blocks", len(blocks))),
+			"start", blocks[0].NumberU64(),
+			"end", blocks[len(blocks)-1].NumberU64(),
+		)
 		if err := d.store.InsertBlocks(ctx, blocks); err != nil {
 			return nil, err
 		}
@@ -297,7 +327,6 @@ func (d *blockDownloader) downloadBlocksUsingWaypoints(
 	}
 
 	d.logger.Debug(syncLogPrefix("finished downloading blocks using waypoints"))
-
 	return lastBlock.Header(), nil
 }
 

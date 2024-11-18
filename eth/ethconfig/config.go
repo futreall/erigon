@@ -73,12 +73,10 @@ var LightClientGPO = gaspricecfg.Config{
 // Defaults contains default settings for use on the Ethereum main net.
 var Defaults = Config{
 	Sync: Sync{
-		ExecWorkerCount:            estimate.ReconstituteState.WorkersHalf(), //only half of CPU, other half will spend for snapshots build/merge/prune
-		ReconWorkerCount:           estimate.ReconstituteState.Workers(),
+		ExecWorkerCount:            estimate.BlocksExecution.WorkersHalf(), //only half of CPU, other half will spend for snapshots build/merge/prune
 		BodyCacheLimit:             256 * 1024 * 1024,
 		BodyDownloadTimeoutSeconds: 2,
 		//LoopBlockLimit:             100_000,
-		PruneLimit:            100,
 		ParallelStateFlushing: true,
 	},
 	Ethash: ethashcfg.Config{
@@ -107,6 +105,8 @@ var Defaults = Config{
 		ProduceE2:  true,
 		ProduceE3:  true,
 	},
+
+	ChaosMonkey: false,
 }
 
 func init() {
@@ -142,6 +142,7 @@ type BlocksFreezing struct {
 	NoDownloader   bool // possible to use snapshots without calling Downloader
 	Verify         bool // verify snapshots on startup
 	DownloaderAddr string
+	ChainName      string
 }
 
 func (s BlocksFreezing) String() string {
@@ -161,8 +162,8 @@ var (
 	FlagSnapStateStop  = "snap.state.stop"
 )
 
-func NewSnapCfg(keepBlocks, produceE2, produceE3 bool) BlocksFreezing {
-	return BlocksFreezing{KeepBlocks: keepBlocks, ProduceE2: produceE2, ProduceE3: produceE3}
+func NewSnapCfg(keepBlocks, produceE2, produceE3 bool, chainName string) BlocksFreezing {
+	return BlocksFreezing{KeepBlocks: keepBlocks, ProduceE2: produceE2, ProduceE3: produceE3, ChainName: chainName}
 }
 
 // Config contains configuration options for ETH protocol.
@@ -259,6 +260,8 @@ type Config struct {
 	SilkwormRpcJsonCompatibility bool
 
 	DisableTxPoolGossip bool
+
+	ChaosMonkey bool
 }
 
 type Sync struct {
@@ -269,7 +272,6 @@ type Sync struct {
 
 	BodyCacheLimit             datasize.ByteSize
 	BodyDownloadTimeoutSeconds int // TODO: change to duration
-	PruneLimit                 int //the maximum records to delete from the DB during pruning
 	BreakAfterStage            string
 	LoopBlockLimit             uint
 	ParallelStateFlushing      bool

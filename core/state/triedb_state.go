@@ -10,11 +10,11 @@ import (
 
 	libcommon "github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/length"
+	"github.com/erigontech/erigon-lib/crypto"
 	"github.com/erigontech/erigon-lib/kv/dbutils"
 	"github.com/erigontech/erigon/common"
 	"github.com/erigontech/erigon/core/types/accounts"
 	witnesstypes "github.com/erigontech/erigon/core/types/witness"
-	"github.com/erigontech/erigon/crypto"
 	"github.com/erigontech/erigon/turbo/trie"
 	"github.com/holiman/uint256"
 )

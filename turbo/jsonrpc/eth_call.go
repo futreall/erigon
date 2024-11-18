@@ -28,9 +28,11 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/erigontech/erigon-lib/commitment"
+
 	libcommon "github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/hexutil"
 	"github.com/erigontech/erigon-lib/common/hexutility"
+	"github.com/erigontech/erigon-lib/crypto"
 	"github.com/erigontech/erigon-lib/gointerfaces"
 	txpool_proto "github.com/erigontech/erigon-lib/gointerfaces/txpoolproto"
 	"github.com/erigontech/erigon-lib/kv"
@@ -40,13 +42,13 @@ import (
 	libstate "github.com/erigontech/erigon-lib/state"
 	types2 "github.com/erigontech/erigon-lib/types"
 	"github.com/erigontech/erigon/consensus"
+
 	"github.com/erigontech/erigon/core"
 	"github.com/erigontech/erigon/core/state"
 	"github.com/erigontech/erigon/core/types"
 	"github.com/erigontech/erigon/core/types/accounts"
 	"github.com/erigontech/erigon/core/vm"
 	"github.com/erigontech/erigon/core/vm/evmtypes"
-	"github.com/erigontech/erigon/crypto"
 	"github.com/erigontech/erigon/eth/stagedsync"
 	"github.com/erigontech/erigon/eth/tracers/logger"
 	"github.com/erigontech/erigon/params"
@@ -114,11 +116,11 @@ func (api *APIImpl) Call(ctx context.Context, args ethapi2.CallArgs, blockNrOrHa
 
 // headerByNumberOrHash - intent to read recent headers only, tries from the lru cache before reading from the db
 func headerByNumberOrHash(ctx context.Context, tx kv.Tx, blockNrOrHash rpc.BlockNumberOrHash, api *APIImpl) (*types.Header, error) {
-	_, bNrOrHashHash, _, err := rpchelper.GetCanonicalBlockNumber(ctx, blockNrOrHash, tx, api._blockReader, api.filters)
+	_, hash, _, err := rpchelper.GetCanonicalBlockNumber(ctx, blockNrOrHash, tx, api._blockReader, api.filters)
 	if err != nil {
 		return nil, err
 	}
-	block := api.tryBlockFromLru(bNrOrHashHash)
+	block := api.tryBlockFromLru(hash)
 	if block != nil {
 		return block.Header(), nil
 	}

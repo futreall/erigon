@@ -30,29 +30,28 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/erigontech/erigon-lib/common/datadir"
-
 	"github.com/holiman/uint256"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/erigontech/erigon-lib/chain"
 	libcommon "github.com/erigontech/erigon-lib/common"
+	"github.com/erigontech/erigon-lib/common/datadir"
 	"github.com/erigontech/erigon-lib/common/hexutility"
+	"github.com/erigontech/erigon-lib/common/math"
+	"github.com/erigontech/erigon-lib/crypto"
 	"github.com/erigontech/erigon-lib/kv"
+	"github.com/erigontech/erigon-lib/log/v3"
 	state2 "github.com/erigontech/erigon-lib/state"
 	types2 "github.com/erigontech/erigon-lib/types"
 	"github.com/erigontech/erigon-lib/wrap"
 
-	"github.com/erigontech/erigon-lib/log/v3"
 	"github.com/erigontech/erigon/common"
-	"github.com/erigontech/erigon/common/math"
 	"github.com/erigontech/erigon/consensus/misc"
 	"github.com/erigontech/erigon/core"
 	"github.com/erigontech/erigon/core/state"
 	"github.com/erigontech/erigon/core/tracing"
 	"github.com/erigontech/erigon/core/types"
 	"github.com/erigontech/erigon/core/vm"
-	"github.com/erigontech/erigon/crypto"
 	"github.com/erigontech/erigon/rlp"
 	"github.com/erigontech/erigon/turbo/rpchelper"
 )
@@ -105,6 +104,27 @@ type stTransaction struct {
 	Value                []string              `json:"value"`
 	AccessLists          []*types2.AccessList  `json:"accessLists,omitempty"`
 	BlobGasFeeCap        *math.HexOrDecimal256 `json:"maxFeePerBlobGas,omitempty"`
+	Authorizations       []stAuthorization     `json:"authorizationList,omitempty"`
+}
+
+type stAuthorization struct {
+	ChainID *math.HexOrDecimal256 `json:"chainId"`
+	Address string                `json:"address"`
+	Nonce   *math.HexOrDecimal256 `json:"nonce"`
+	V       *math.HexOrDecimal256 `json:"v"`
+	R       *math.HexOrDecimal256 `json:"r"`
+	S       *math.HexOrDecimal256 `json:"s"`
+}
+
+func (a *stAuthorization) ToAuthorization() types.Authorization {
+	return types.Authorization{
+		ChainID: uint256.MustFromBig((*big.Int)(a.ChainID)),
+		Address: libcommon.HexToAddress(a.Address),
+		Nonce:   ((*big.Int)(a.Nonce)).Uint64(),
+		V:       *uint256.MustFromBig((*big.Int)(a.V)),
+		R:       *uint256.MustFromBig((*big.Int)(a.R)),
+		S:       *uint256.MustFromBig((*big.Int)(a.S)),
+	}
 }
 
 //go:generate gencodec -type stEnv -field-override stEnvMarshaling -out gen_stenv.go
@@ -294,6 +314,7 @@ func (t *StateTest) RunNoVerify(tx kv.RwTx, subtest StateSubtest, vmconfig vm.Co
 func MakePreState(rules *chain.Rules, tx kv.RwTx, accounts types.GenesisAlloc, blockNr uint64) (*state.IntraBlockState, error) {
 	r := rpchelper.NewLatestStateReader(tx)
 	statedb := state.New(r)
+	statedb.SetTxContext(0)
 	for addr, a := range accounts {
 		statedb.SetCode(addr, a.Code)
 		statedb.SetNonce(addr, a.Nonce)
@@ -474,6 +495,15 @@ func toMessage(tx stTransaction, ps stPostState, baseFee *big.Int) (core.Message
 		false, /* isFree */
 		uint256.MustFromBig(blobFeeCap),
 	)
+
+	// Add authorizations if present.
+	if len(tx.Authorizations) > 0 {
+		authorizations := make([]types.Authorization, len(tx.Authorizations))
+		for i, auth := range tx.Authorizations {
+			authorizations[i] = auth.ToAuthorization()
+		}
+		msg.SetAuthorizations(authorizations)
+	}
 
 	return msg, nil
 }

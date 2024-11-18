@@ -34,6 +34,7 @@ import (
 	"github.com/erigontech/erigon-lib/common"
 	libcommon "github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/hexutility"
+	"github.com/erigontech/erigon-lib/crypto"
 	"github.com/erigontech/erigon-lib/kv"
 	"github.com/erigontech/erigon-lib/kv/memdb"
 	"github.com/erigontech/erigon-lib/kv/rawdbv3"
@@ -46,7 +47,6 @@ import (
 	"github.com/erigontech/erigon/core/state"
 	"github.com/erigontech/erigon/core/types"
 	"github.com/erigontech/erigon/core/vm"
-	"github.com/erigontech/erigon/crypto"
 	"github.com/erigontech/erigon/params"
 	"github.com/erigontech/erigon/polygon/bor"
 	"github.com/erigontech/erigon/rlp"
@@ -154,8 +154,7 @@ func (rg *requestGenerator) GetTransactionReceipt(ctx context.Context, hash libc
 	}
 	defer tx.Rollback()
 
-	_, _, _, ibs, _, err := transactions.ComputeTxEnv(ctx, engine, block, chainConfig, reader, rawdbv3.TxNums, tx, 0)
-
+	ibs, _, _, _, _, err := transactions.ComputeBlockContext(ctx, engine, block.HeaderNoCopy(), chainConfig, reader, rawdbv3.TxNums, tx, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +178,7 @@ func (rg *requestGenerator) GetTransactionReceipt(ctx context.Context, hash libc
 
 	for i, txn := range block.Transactions() {
 
-		ibs.SetTxContext(txn.Hash(), i)
+		ibs.SetTxContext(i)
 
 		receipt, _, err := core.ApplyTransaction(chainConfig, core.GetHashFn(header, getHeader), engine, nil, gp, ibs, noopWriter, header, txn, &usedGas, &usedBlobGas, vm.Config{})
 

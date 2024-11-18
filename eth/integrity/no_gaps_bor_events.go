@@ -12,8 +12,8 @@ import (
 	"github.com/erigontech/erigon/core"
 	"github.com/erigontech/erigon/eth/stagedsync/stages"
 	"github.com/erigontech/erigon/polygon/bor/borcfg"
+	"github.com/erigontech/erigon/polygon/heimdall"
 	"github.com/erigontech/erigon/turbo/services"
-	"github.com/erigontech/erigon/turbo/snapshotsync/freezeblocks"
 )
 
 func NoGapsInBorEvents(ctx context.Context, db kv.RoDB, blockReader services.FullBlockReader, from, to uint64, failFast bool) (err error) {
@@ -55,9 +55,9 @@ func NoGapsInBorEvents(ctx context.Context, db kv.RoDB, blockReader services.Ful
 	logEvery := time.NewTicker(10 * time.Second)
 	defer logEvery.Stop()
 
-	snapshots := blockReader.BorSnapshots().(*freezeblocks.BorRoSnapshots)
+	snapshots := blockReader.BorSnapshots().(*heimdall.RoSnapshots)
 
-	var prevEventId uint64
+	var prevEventId uint64 = 1
 	var maxBlockNum uint64
 
 	if to > 0 {
@@ -79,7 +79,7 @@ func NoGapsInBorEvents(ctx context.Context, db kv.RoDB, blockReader services.Ful
 			break
 		}
 
-		prevEventId, err = freezeblocks.ValidateBorEvents(ctx, config, db, blockReader, eventSegment, prevEventId, maxBlockNum, failFast, logEvery)
+		prevEventId, err = heimdall.ValidateBorEvents(ctx, config, db, blockReader, eventSegment, prevEventId, maxBlockNum, failFast, logEvery)
 
 		if err != nil && failFast {
 			return err
@@ -90,24 +90,29 @@ func NoGapsInBorEvents(ctx context.Context, db kv.RoDB, blockReader services.Ful
 		err = db.View(ctx, func(tx kv.Tx) error {
 			if false {
 				lastEventId, _, err := blockReader.LastEventId(ctx, tx)
-
 				if err != nil {
 					return err
 				}
 
 				borHeimdallProgress, err := stages.GetStageProgress(tx, stages.BorHeimdall)
-
 				if err != nil {
 					return err
 				}
+
+				polygonSyncProgress, err := stages.GetStageProgress(tx, stages.PolygonSync)
+				if err != nil {
+					return err
+				}
+
+				// bor heimdall and polygon sync are mutually exclusive, bor heimdall will be removed soon
+				polygonSyncProgress = max(borHeimdallProgress, polygonSyncProgress)
 
 				bodyProgress, err := stages.GetStageProgress(tx, stages.Bodies)
-
 				if err != nil {
 					return err
 				}
 
-				log.Info("[integrity] LAST Event", "event", lastEventId, "bor-progress", borHeimdallProgress, "body-progress", bodyProgress)
+				log.Info("[integrity] LAST Event", "event", lastEventId, "bor-progress", polygonSyncProgress, "body-progress", bodyProgress)
 
 				if bodyProgress > borHeimdallProgress {
 					for blockNum := maxBlockNum + 1; blockNum <= bodyProgress; blockNum++ {

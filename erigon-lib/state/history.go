@@ -74,9 +74,9 @@ type History struct {
 	historyValsTable string // key1+key2+txnNum -> oldValue , stores values BEFORE change
 
 	compressCfg seg.Cfg
-	compression FileCompression
+	compression seg.FileCompression
 
-	//TODO: re-visit this check - maybe we don't need it. It's abot kill in the middle of merge
+	//TODO: re-visit this check - maybe we don't need it. It's about kill in the middle of merge
 	integrityCheck func(fromStep, toStep uint64) bool
 
 	// not large:
@@ -94,7 +94,7 @@ type History struct {
 
 type histCfg struct {
 	iiCfg       iiCfg
-	compression FileCompression
+	compression seg.FileCompression
 
 	//historyLargeValues: used to store values > 2kb (pageSize/2)
 	//small values - can be stored in more compact ways in db (DupSort feature)
@@ -292,13 +292,16 @@ func (h *History) openDirtyFiles() error {
 }
 
 func (h *History) closeWhatNotInList(fNames []string) {
+	protectFiles := make(map[string]struct{}, len(fNames))
+	for _, f := range fNames {
+		protectFiles[f] = struct{}{}
+	}
 	var toClose []*filesItem
 	h.dirtyFiles.Walk(func(items []*filesItem) bool {
-	Loop1:
 		for _, item := range items {
-			for _, protectName := range fNames {
-				if item.decompressor != nil && item.decompressor.FileName() == protectName {
-					continue Loop1
+			if item.decompressor != nil {
+				if _, ok := protectFiles[item.decompressor.FileName()]; ok {
+					continue
 				}
 			}
 			toClose = append(toClose, item)
@@ -399,8 +402,8 @@ func (h *History) buildVI(ctx context.Context, historyIdxPath string, hist, efHi
 	defer efHist.EnableReadAhead().DisableReadAhead()
 
 	var keyBuf, valBuf []byte
-	histReader := NewArchiveGetter(hist.MakeGetter(), h.compression)
-	efHistReader := NewArchiveGetter(efHist.MakeGetter(), h.InvertedIndex.compression)
+	histReader := seg.NewReader(hist.MakeGetter(), h.compression)
+	efHistReader := seg.NewReader(efHist.MakeGetter(), h.InvertedIndex.compression)
 
 	for {
 		histReader.Reset(0)
@@ -579,8 +582,8 @@ func (w *historyBufferedWriter) Flush(ctx context.Context, tx kv.RwTx) error {
 }
 
 type HistoryCollation struct {
-	historyComp   ArchiveWriter
-	efHistoryComp ArchiveWriter
+	historyComp   *seg.Writer
+	efHistoryComp *seg.Writer
 	historyPath   string
 	efHistoryPath string
 	historyCount  int // same as historyComp.Count()
@@ -602,8 +605,8 @@ func (h *History) collate(ctx context.Context, step, txFrom, txTo uint64, roTx k
 	}
 
 	var (
-		historyComp   ArchiveWriter
-		efHistoryComp ArchiveWriter
+		historyComp   *seg.Writer
+		efHistoryComp *seg.Writer
 		txKey         [8]byte
 		err           error
 
@@ -628,7 +631,7 @@ func (h *History) collate(ctx context.Context, step, txFrom, txTo uint64, roTx k
 	if err != nil {
 		return HistoryCollation{}, fmt.Errorf("create %s history compressor: %w", h.filenameBase, err)
 	}
-	historyComp = NewArchiveWriter(comp, h.compression)
+	historyComp = seg.NewWriter(comp, h.compression)
 
 	keysCursor, err := roTx.CursorDupSort(h.indexKeysTable)
 	if err != nil {
@@ -691,7 +694,7 @@ func (h *History) collate(ctx context.Context, step, txFrom, txTo uint64, roTx k
 		prevKey     []byte
 		initialized bool
 	)
-	efHistoryComp = NewArchiveWriter(efComp, CompressNone) // coll+build must be fast - no compression
+	efHistoryComp = seg.NewWriter(efComp, seg.CompressNone) // coll+build must be fast - no compression
 	collector.SortAndFlushInBackground(true)
 	defer bitmapdb.ReturnToPool64(bitmap)
 
@@ -965,7 +968,7 @@ type HistoryRoTx struct {
 	iit *InvertedIndexRoTx
 
 	files   visibleFiles // have no garbage (canDelete=true, overlaps, etc...)
-	getters []ArchiveGetter
+	getters []*seg.Reader
 	readers []*recsplit.IndexReader
 
 	trace bool
@@ -992,14 +995,14 @@ func (h *History) BeginFilesRo() *HistoryRoTx {
 	}
 }
 
-func (ht *HistoryRoTx) statelessGetter(i int) ArchiveGetter {
+func (ht *HistoryRoTx) statelessGetter(i int) *seg.Reader {
 	if ht.getters == nil {
-		ht.getters = make([]ArchiveGetter, len(ht.files))
+		ht.getters = make([]*seg.Reader, len(ht.files))
 	}
 	r := ht.getters[i]
 	if r == nil {
 		g := ht.files[i].src.decompressor.MakeGetter()
-		r = NewArchiveGetter(g, ht.h.compression)
+		r = seg.NewReader(g, ht.h.compression)
 		ht.getters[i] = r
 	}
 	return r
@@ -1184,6 +1187,7 @@ func (ht *HistoryRoTx) historySeekInFiles(key []byte, txNum uint64) ([]byte, boo
 	}
 	historyItem, ok := ht.getFile(histTxNum)
 	if !ok {
+		log.Warn("historySeekInFiles: file not found", "key", key, "txNum", txNum, "histTxNum", histTxNum, "ssize", ht.h.aggregationStep)
 		return nil, false, fmt.Errorf("hist file not found: key=%x, %s.%d-%d", key, ht.h.filenameBase, histTxNum/ht.h.aggregationStep, histTxNum/ht.h.aggregationStep)
 	}
 	reader := ht.statelessIdxReader(historyItem.i)
@@ -1354,7 +1358,7 @@ func (ht *HistoryRoTx) WalkAsOf(ctx context.Context, startTxNum uint64, from, to
 			continue
 		}
 		// TODO: seek(from)
-		g := NewArchiveGetter(item.src.decompressor.MakeGetter(), ht.h.compression)
+		g := seg.NewReader(item.src.decompressor.MakeGetter(), ht.h.compression)
 		g.Reset(0)
 		if g.HasNext() {
 			key, offset := g.Next(nil)
@@ -1659,7 +1663,7 @@ func (ht *HistoryRoTx) iterateChangedFrozen(fromTxNum, toTxNum int, asc order.By
 		if toTxNum >= 0 && item.startTxNum >= uint64(toTxNum) {
 			break
 		}
-		g := NewArchiveGetter(item.src.decompressor.MakeGetter(), ht.h.compression)
+		g := seg.NewReader(item.src.decompressor.MakeGetter(), ht.h.compression)
 		g.Reset(0)
 		if g.HasNext() {
 			key, offset := g.Next(nil)
@@ -1729,13 +1733,7 @@ func (ht *HistoryRoTx) idxRangeRecent(key []byte, startTxNum, endTxNum int, asc 
 			toTxNum = uint64(endTxNum)
 		}
 		binary.BigEndian.PutUint64(to[len(key):], toTxNum)
-		var it stream.KV
-		var err error
-		if asc {
-			it, err = roTx.RangeAscend(ht.h.historyValsTable, from, to, limit)
-		} else {
-			it, err = roTx.RangeDescend(ht.h.historyValsTable, from, to, limit)
-		}
+		it, err := roTx.Range(ht.h.historyValsTable, from, to, asc, limit)
 		if err != nil {
 			return nil, err
 		}
@@ -2069,7 +2067,7 @@ func (h *History) MakeSteps(toTxNum uint64) []*HistoryStep {
 			}
 
 			step := &HistoryStep{
-				compressVals: h.compression&CompressVals != 0,
+				compressVals: h.compression&seg.CompressVals != 0,
 				indexItem:    item,
 				indexFile: visibleFile{
 					startTxNum: item.startTxNum,

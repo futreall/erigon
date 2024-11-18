@@ -28,9 +28,9 @@ import (
 	"reflect"
 
 	libcommon "github.com/erigontech/erigon-lib/common"
+	"github.com/erigontech/erigon-lib/crypto"
 
 	"github.com/erigontech/erigon/core/types/accounts"
-	"github.com/erigontech/erigon/crypto"
 	"github.com/erigontech/erigon/ethdb"
 )
 

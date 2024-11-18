@@ -18,18 +18,20 @@ package sync
 
 import (
 	"context"
+	"fmt"
 
 	"golang.org/x/sync/errgroup"
 
 	"github.com/erigontech/erigon-lib/chain"
-	"github.com/erigontech/erigon-lib/direct"
 	"github.com/erigontech/erigon-lib/gointerfaces/executionproto"
+	"github.com/erigontech/erigon-lib/gointerfaces/sentryproto"
 	"github.com/erigontech/erigon-lib/log/v3"
 	"github.com/erigontech/erigon/p2p/sentry"
 	"github.com/erigontech/erigon/polygon/bor/borcfg"
 	"github.com/erigontech/erigon/polygon/bridge"
 	"github.com/erigontech/erigon/polygon/heimdall"
 	"github.com/erigontech/erigon/polygon/p2p"
+	"github.com/erigontech/erigon/turbo/snapshotsync/freezeblocks"
 )
 
 type Service interface {
@@ -48,10 +50,11 @@ type service struct {
 func NewService(
 	logger log.Logger,
 	chainConfig *chain.Config,
-	sentryClient direct.SentryClient,
+	sentryClient sentryproto.SentryClient,
 	maxPeers int,
 	statusDataProvider *sentry.StatusDataProvider,
 	executionClient executionproto.ExecutionClient,
+	blockReader *freezeblocks.BlockReader,
 	blockLimit uint,
 	bridgeService bridge.Service,
 	heimdallService heimdall.Service,
@@ -101,12 +104,60 @@ func NewService(
 func (s *service) Run(parentCtx context.Context) error {
 	group, ctx := errgroup.WithContext(parentCtx)
 
-	group.Go(func() error { return s.p2pService.Run(ctx) })
-	group.Go(func() error { return s.store.Run(ctx) })
-	group.Go(func() error { return s.events.Run(ctx) })
-	group.Go(func() error { return s.heimdallService.Run(ctx) })
-	group.Go(func() error { return s.bridgeService.Run(ctx) })
-	group.Go(func() error { return s.sync.Run(ctx) })
+	group.Go(func() error {
+		err := s.p2pService.Run(ctx)
+
+		if err != nil {
+			err = fmt.Errorf("pos sync p2p failed: %w", err)
+		}
+
+		return err
+	})
+	group.Go(func() error {
+		err := s.store.Run(ctx)
+
+		if err != nil {
+			err = fmt.Errorf("pos sync store failed: %w", err)
+		}
+
+		return err
+	})
+	group.Go(func() error {
+		err := s.events.Run(ctx)
+
+		if err != nil {
+			err = fmt.Errorf("pos sync events failed: %w", err)
+		}
+
+		return err
+	})
+	group.Go(func() error {
+		err := s.heimdallService.Run(ctx)
+
+		if err != nil {
+			err = fmt.Errorf("pos sync heimdall failed: %w", err)
+		}
+
+		return err
+	})
+	group.Go(func() error {
+		err := s.bridgeService.Run(ctx)
+
+		if err != nil {
+			err = fmt.Errorf("pos sync bridge failed: %w", err)
+		}
+
+		return err
+	})
+	group.Go(func() error {
+		err := s.sync.Run(ctx)
+
+		if err != nil {
+			err = fmt.Errorf("pos sync failed: %w", err)
+		}
+
+		return err
+	})
 
 	return group.Wait()
 }

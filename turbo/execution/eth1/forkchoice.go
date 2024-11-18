@@ -25,6 +25,7 @@ import (
 
 	"github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/dbg"
+	"github.com/erigontech/erigon-lib/common/metrics"
 	"github.com/erigontech/erigon-lib/gointerfaces"
 	execution "github.com/erigontech/erigon-lib/gointerfaces/executionproto"
 	"github.com/erigontech/erigon-lib/kv"
@@ -127,19 +128,32 @@ func (e *EthereumExecutionModule) UpdateForkChoice(ctx context.Context, req *exe
 
 	// So we wait at most the amount specified by req.Timeout before just sending out
 	go e.updateForkChoice(e.bacgroundCtx, blockHash, safeHash, finalizedHash, outcomeCh)
-	fcuTimer := time.NewTimer(time.Duration(req.Timeout) * time.Millisecond)
 
-	select {
-	case <-fcuTimer.C:
-		e.logger.Debug("treating forkChoiceUpdated as asynchronous as it is taking too long")
-		return &execution.ForkChoiceReceipt{
-			LatestValidHash: gointerfaces.ConvertHashToH256(common.Hash{}),
-			Status:          execution.ExecutionStatus_Busy,
-		}, nil
-	case outcome := <-outcomeCh:
-		return outcome.receipt, outcome.err
+	if req.Timeout > 0 {
+		fcuTimer := time.NewTimer(time.Duration(req.Timeout) * time.Millisecond)
+
+		select {
+		case <-fcuTimer.C:
+			e.logger.Debug("treating forkChoiceUpdated as asynchronous as it is taking too long")
+			return &execution.ForkChoiceReceipt{
+				LatestValidHash: gointerfaces.ConvertHashToH256(common.Hash{}),
+				Status:          execution.ExecutionStatus_Busy,
+			}, nil
+		case outcome := <-outcomeCh:
+			return outcome.receipt, outcome.err
+		case <-ctx.Done():
+			e.logger.Debug("forkChoiceUpdate cancelled")
+			return nil, ctx.Err()
+		}
 	}
 
+	select {
+	case outcome := <-outcomeCh:
+		return outcome.receipt, outcome.err
+	case <-ctx.Done():
+		e.logger.Debug("forkChoiceUpdate cancelled")
+		return nil, ctx.Err()
+	}
 }
 
 func writeForkChoiceHashes(tx kv.RwTx, blockHash, safeHash, finalizedHash common.Hash) {
@@ -187,7 +201,10 @@ func (e *EthereumExecutionModule) updateForkChoice(ctx context.Context, original
 		if err != nil {
 			return err
 		}
-		return rawdb.WriteLastNewBlockSeen(tx, *num)
+		if num != nil {
+			return rawdb.WriteLastNewBlockSeen(tx, *num)
+		}
+		return nil
 	}); err != nil {
 		sendForkchoiceErrorWithoutWaiting(e.logger, outcomeCh, err, false)
 		return
@@ -511,7 +528,7 @@ func (e *EthereumExecutionModule) updateForkChoice(ctx context.Context, original
 		var m runtime.MemStats
 		dbg.ReadMemStats(&m)
 		blockTimings := e.forkValidator.GetTimings(blockHash)
-		logArgs := []interface{}{"head", headHash, "hash", blockHash}
+		logArgs := []interface{}{"age", common.PrettyAge(time.Unix(int64(fcuHeader.Time), 0)), "head", headHash, "hash", blockHash}
 		if flushExtendingFork {
 			totalTime := blockTimings[engine_helpers.BlockTimingsValidationIndex]
 			if !e.syncCfg.ParallelStateFlushing {
@@ -519,7 +536,8 @@ func (e *EthereumExecutionModule) updateForkChoice(ctx context.Context, original
 			}
 			gasUsedMgas := float64(fcuHeader.GasUsed) / 1e6
 			mgasPerSec := gasUsedMgas / totalTime.Seconds()
-			e.avgMgasSec = ((e.avgMgasSec * (float64(e.recordedMgasSec))) + mgasPerSec) / float64(e.recordedMgasSec+1)
+			metrics.ChainTipMgasPerSec.Add(mgasPerSec)
+			e.avgMgasSec = (e.avgMgasSec*float64(e.recordedMgasSec) + mgasPerSec) / float64(e.recordedMgasSec+1)
 			e.recordedMgasSec++
 			logArgs = append(logArgs, "number", fcuHeader.Number.Uint64(), "execution", blockTimings[engine_helpers.BlockTimingsValidationIndex], "mgas/s", fmt.Sprintf("%.2f", mgasPerSec), "average mgas/s", fmt.Sprintf("%.2f", e.avgMgasSec))
 			if !e.syncCfg.ParallelStateFlushing {

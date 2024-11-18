@@ -41,6 +41,13 @@ func (s *StateChangeSet) Copy() *StateChangeSet {
 	}
 	return &res
 }
+func (s *StateChangeSet) Len() int {
+	res := 0
+	for i := range s.Diffs {
+		res += len(s.Diffs[i].keys)
+	}
+	return res
+}
 
 type DomainEntryDiff struct {
 	Key           []byte

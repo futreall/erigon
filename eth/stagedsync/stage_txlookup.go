@@ -137,7 +137,9 @@ func txnLookupTransform(logPrefix string, tx kv.RwTx, blockFrom, blockTo uint64,
 	bigNum := new(big.Int)
 	return etl.Transform(logPrefix, tx, kv.HeaderCanonical, kv.TxLookup, cfg.tmpdir, func(k, v []byte, next etl.ExtractNextFunc) error {
 		blocknum, blockHash := binary.BigEndian.Uint64(k), libcommon.CastToHash(v)
+		t := time.Now()
 		body, err := cfg.blockReader.BodyWithTransactions(ctx, tx, blockHash, blocknum)
+		log.Warn(fmt.Sprintf("[%s] BodyWithTransactions: %s", logPrefix, time.Since(t)))
 		if err != nil {
 			return err
 		}

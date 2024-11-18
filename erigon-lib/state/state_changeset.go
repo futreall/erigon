@@ -19,12 +19,15 @@ package state
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"math"
 	"sort"
+	"time"
 
 	"github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/kv"
 	"github.com/erigontech/erigon-lib/kv/dbutils"
+	"github.com/erigontech/erigon-lib/log/v3"
 )
 
 type StateChangeSet struct {
@@ -281,6 +284,7 @@ func WriteDiffSet(tx kv.RwTx, blockNumber uint64, blockHash common.Hash, diffSet
 		return err
 	}
 
+	defer func(t time.Time) { log.Warn(fmt.Sprintf("[dbg] Trie WriteDiffSet: %s", time.Since(t))) }(time.Now())
 	key := make([]byte, 48)
 	for i := 0; i < chunkCount; i++ {
 		start := i * diffChunkLen

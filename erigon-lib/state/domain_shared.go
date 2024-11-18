@@ -897,6 +897,7 @@ func (sd *SharedDomains) Close() {
 }
 
 func (sd *SharedDomains) Flush(ctx context.Context, tx kv.RwTx) error {
+	t0 := time.Now()
 	for key, changeset := range sd.pastChangesAccumulator {
 		blockNum := binary.BigEndian.Uint64([]byte(key[:8]))
 		blockHash := common.BytesToHash([]byte(key[8:]))
@@ -905,6 +906,7 @@ func (sd *SharedDomains) Flush(ctx context.Context, tx kv.RwTx) error {
 		}
 	}
 	sd.pastChangesAccumulator = make(map[string]*StateChangeSet)
+	d0 := time.Since(t0)
 
 	t1 := time.Now()
 	fh, err := sd.ComputeCommitment(ctx, true, sd.BlockNum(), "flush-commitment")
@@ -938,7 +940,7 @@ func (sd *SharedDomains) Flush(ctx context.Context, tx kv.RwTx) error {
 		}
 		w.close()
 	}
-	log.Warn(fmt.Sprintf("[dbg] Trie Flush: calc=%s, dom=%s, ii=%s\n", d1, d2, time.Since(t3)))
+	log.Warn(fmt.Sprintf("[dbg] Trie Flush: diffsWrite=%s, calc=%s, dom=%s, ii=%s\n", d0, d1, d2, time.Since(t3)))
 
 	return nil
 }

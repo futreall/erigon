@@ -817,6 +817,7 @@ func flushAndCheckCommitmentV3(ctx context.Context, header *types.Header, applyT
 		panic(fmt.Errorf("%d != %d", doms.BlockNum(), header.Number.Uint64()))
 	}
 
+	t1 := time.Now()
 	rh, err := doms.ComputeCommitment(ctx, true, header.Number.Uint64(), e.LogPrefix())
 	if err != nil {
 		return false, fmt.Errorf("StateV3.Apply: %w", err)
@@ -827,6 +828,8 @@ func flushAndCheckCommitmentV3(ctx context.Context, header *types.Header, applyT
 	}
 	if bytes.Equal(rh, header.Root.Bytes()) {
 		if !inMemExec {
+			d1 := time.Since(t1)
+			t2 := time.Now()
 			if err := doms.Flush(ctx, applyTx); err != nil {
 				return false, err
 			}

@@ -139,7 +139,6 @@ func txnLookupTransform(logPrefix string, tx kv.RwTx, blockFrom, blockTo uint64,
 		blocknum, blockHash := binary.BigEndian.Uint64(k), libcommon.CastToHash(v)
 		t := time.Now()
 		body, err := cfg.blockReader.BodyWithTransactions(ctx, tx, blockHash, blocknum)
-		log.Warn(fmt.Sprintf("[%s] BodyWithTransactions: %s", logPrefix, time.Since(t)))
 		if err != nil {
 			return err
 		}
@@ -147,6 +146,7 @@ func txnLookupTransform(logPrefix string, tx kv.RwTx, blockFrom, blockTo uint64,
 			log.Warn(fmt.Sprintf("[%s] transform: empty block body %d, hash %x", logPrefix, blocknum, v))
 			return nil
 		}
+		log.Warn(fmt.Sprintf("[%s] BodyWithTransactions: %s, %d, %d", logPrefix, time.Since(t)), blocknum, len(body.Transactions))
 
 		blockNumBytes := bigNum.SetUint64(blocknum).Bytes()
 		for _, txn := range body.Transactions {

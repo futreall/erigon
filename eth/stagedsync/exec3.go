@@ -838,9 +838,7 @@ func flushAndCheckCommitmentV3(ctx context.Context, header *types.Header, applyT
 			}
 
 			d2 := time.Since(t2)
-			if !inMemExec {
-				logger.Error(fmt.Sprintf("[%s] Trie: calc=%s, flush=%s", e.LogPrefix(), d1, d2))
-			}
+			logger.Warn(fmt.Sprintf("[%s] Trie: calc=%s, flush=%s", e.LogPrefix(), d1, d2))
 		}
 		return true, nil
 	}

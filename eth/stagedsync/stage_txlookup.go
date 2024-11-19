@@ -25,6 +25,7 @@ import (
 
 	"github.com/erigontech/erigon-lib/kv/rawdbv3"
 	"github.com/erigontech/erigon-lib/log/v3"
+	"github.com/erigontech/erigon/eth/stagedsync/stages"
 
 	"github.com/erigontech/erigon-lib/chain"
 	libcommon "github.com/erigontech/erigon-lib/common"
@@ -252,7 +253,11 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 			blockFrom = binary.BigEndian.Uint64(firstNonGenesisHeader)
 			log.Warn("[dbg] tx_lookup2.1", "blockFrom", blockFrom)
 		} else {
-			blockFrom = s.ForwardProgress
+			execProgress, err := getStageProgress(tx, nil, stages.Senders)
+			if err != nil {
+				return err
+			}
+			blockFrom = execProgress
 			log.Warn("[dbg] tx_lookup2.2", "blockFrom", blockFrom)
 		}
 	}

@@ -1341,8 +1341,6 @@ func (sdc *SharedDomainsCommitmentContext) storeCommitmentState(blockNum uint64,
 	// state could be equal but txnum/blocknum could be different.
 	// We do skip only full matches
 	if bytes.Equal(prevState, encodedState) {
-		log.Warn("[dbg] storeCommitmentState1!!", "blockNum", blockNum, "sdc.sharedDomains.txNum", sdc.sharedDomains.txNum)
-
 		//fmt.Printf("[commitment] skip store txn %d block %d (prev b=%d t=%d) rh %x\n",
 		//	binary.BigEndian.Uint64(prevState[8:16]), binary.BigEndian.Uint64(prevState[:8]), dc.ht.iit.txNum, blockNum, rh)
 		return nil
@@ -1350,7 +1348,6 @@ func (sdc *SharedDomainsCommitmentContext) storeCommitmentState(blockNum uint64,
 	if sdc.sharedDomains.trace {
 		fmt.Printf("[commitment] store txn %d block %d rootHash %x\n", sdc.sharedDomains.txNum, blockNum, rootHash)
 	}
-	log.Warn("[dbg] storeCommitmentState2", "blockNum", blockNum, "sdc.sharedDomains.txNum", sdc.sharedDomains.txNum)
 	sdc.sharedDomains.put(kv.CommitmentDomain, string(keyCommitmentState), encodedState)
 	return sdc.sharedDomains.domainWriters[kv.CommitmentDomain].PutWithPrev(keyCommitmentState, nil, encodedState, prevState, prevStep)
 }

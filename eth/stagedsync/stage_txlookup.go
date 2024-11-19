@@ -247,7 +247,7 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 		if err != nil {
 			return err
 		}
-		log.Warn("[dbg] tx_lookup", "is_nil", k == nil, "s.ForwardProgress", s.ForwardProgress)
+		log.Warn("[dbg] tx_lookup", "is_nil", k == nil, "s.ForwardProgress", s.ForwardProgress, "s.PruneProgress", s.PruneProgress)
 		if k != nil {
 			blockFrom = binary.BigEndian.Uint64(k)
 			log.Warn("[dbg] tx_lookup2", "blockFrom", blockFrom)

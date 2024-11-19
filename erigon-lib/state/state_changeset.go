@@ -277,6 +277,7 @@ func DeserializeKeys(in []byte) [kv.DomainLen][]DomainEntryDiff {
 	return ret
 }
 
+const diffChunkKeyLen = 48
 const diffChunkLen = 4*1024 - 48
 
 func WriteDiffSet(tx kv.RwTx, blockNumber uint64, blockHash common.Hash, diffSet *StateChangeSet) error {
@@ -292,7 +293,7 @@ func WriteDiffSet(tx kv.RwTx, blockNumber uint64, blockHash common.Hash, diffSet
 	}
 
 	defer func(t time.Time) { log.Warn(fmt.Sprintf("[dbg] Trie WriteDiffSet: %s", time.Since(t))) }(time.Now())
-	key := make([]byte, 48)
+	key := make([]byte, diffChunkKeyLen)
 	for i := 0; i < chunkCount; i++ {
 		start := i * diffChunkLen
 		end := (i + 1) * diffChunkLen

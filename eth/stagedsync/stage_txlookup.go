@@ -263,6 +263,7 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 	if cfg.prune.History.Enabled() {
 		blockTo = cfg.prune.History.PruneTo(s.ForwardProgress)
 		pruneBor = true
+		log.Warn("[dbg] tx_lookup4", "blockTo", blockTo, "s.ForwardProgress", s.ForwardProgress, "s.PruneProgress", s.PruneProgress)
 	} else {
 		blockTo = cfg.blockReader.CanPruneTo(s.ForwardProgress)
 		log.Warn("[dbg] tx_lookup3", "blockTo", blockTo, "s.ForwardProgress", s.ForwardProgress, "s.PruneProgress", s.PruneProgress)

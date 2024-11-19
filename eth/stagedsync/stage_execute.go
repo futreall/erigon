@@ -152,7 +152,7 @@ func ExecBlockV3(s *StageState, u Unwinder, txc wrap.TxContainer, toBlock uint64
 		workersCount = 1
 	}
 
-	prevStageProgress, err := stageProgress(txc.Tx, cfg.db, stages.Senders)
+	prevStageProgress, err := getStageProgress(txc.Tx, cfg.db, stages.Senders)
 	if err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func unwindExec3(u *UnwindState, s *StageState, txc wrap.TxContainer, ctx contex
 	return nil
 }
 
-func stageProgress(tx kv.Tx, db kv.RoDB, stage stages.SyncStage) (prevStageProgress uint64, err error) {
+func getStageProgress(tx kv.Tx, db kv.RoDB, stage stages.SyncStage) (prevStageProgress uint64, err error) {
 	if tx != nil {
 		prevStageProgress, err = stages.GetStageProgress(tx, stage)
 		if err != nil {
@@ -251,7 +251,7 @@ func stageProgress(tx kv.Tx, db kv.RoDB, stage stages.SyncStage) (prevStageProgr
 }
 
 func BorHeimdallStageProgress(tx kv.Tx, cfg BorHeimdallCfg) (prevStageProgress uint64, err error) {
-	return stageProgress(tx, cfg.db, stages.BorHeimdall)
+	return getStageProgress(tx, cfg.db, stages.BorHeimdall)
 }
 
 // ================ Erigon3 End ================

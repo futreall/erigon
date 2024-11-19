@@ -309,8 +309,12 @@ func ExecV3(ctx context.Context,
 	}
 
 	//if maxBlockNum > blockNum+16 {
+	_prevStageProgress, _ := getStageProgress(txc.Tx, cfg.db, stages.Senders)
+	if err != nil {
+		return err
+	}
 	log.Info(fmt.Sprintf("[%s] starting", execStage.LogPrefix()),
-		"inMem", inMemExec, "from", blockNum, "to", maxBlockNum, "execStage.BlockNumber", execStage.BlockNumber, "maxBlockNum", maxBlockNum, "fromTxNum", doms.TxNum(), "offsetFromBlockBeginning", offsetFromBlockBeginning, "initialCycle", initialCycle, "useExternalTx", useExternalTx, "inMem", inMemExec)
+		"inMem", inMemExec, "from", blockNum, "to", maxBlockNum, "execStage.BlockNumber", execStage.BlockNumber, "maxBlockNum", maxBlockNum, "prevStageProgress", _prevStageProgress, "fromTxNum", doms.TxNum(), "offsetFromBlockBeginning", offsetFromBlockBeginning, "initialCycle", initialCycle, "useExternalTx", useExternalTx, "inMem", inMemExec)
 	//}
 
 	agg.BuildFilesInBackground(outputTxNum.Load())

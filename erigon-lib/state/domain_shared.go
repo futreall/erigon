@@ -1332,7 +1332,6 @@ func (sdc *SharedDomainsCommitmentContext) storeCommitmentState(blockNum uint64,
 	if sdc.sharedDomains.aggTx == nil {
 		return fmt.Errorf("store commitment state: AggregatorContext is not initialized")
 	}
-	log.Warn("[dbg] storeCommitmentState", "blockNum", blockNum, "sdc.sharedDomains.txNum", sdc.sharedDomains.txNum)
 	encodedState, err := sdc.encodeCommitmentState(blockNum, sdc.sharedDomains.txNum)
 	if err != nil {
 		return err
@@ -1347,6 +1346,8 @@ func (sdc *SharedDomainsCommitmentContext) storeCommitmentState(blockNum uint64,
 	// state could be equal but txnum/blocknum could be different.
 	// We do skip only full matches
 	if bytes.Equal(prevState, encodedState) {
+		log.Warn("[dbg] storeCommitmentState1!!", "blockNum", blockNum, "sdc.sharedDomains.txNum", sdc.sharedDomains.txNum)
+
 		//fmt.Printf("[commitment] skip store txn %d block %d (prev b=%d t=%d) rh %x\n",
 		//	binary.BigEndian.Uint64(prevState[8:16]), binary.BigEndian.Uint64(prevState[:8]), dc.ht.iit.txNum, blockNum, rh)
 		return nil
@@ -1377,6 +1378,7 @@ func (sdc *SharedDomainsCommitmentContext) encodeCommitmentState(blockNum, txNum
 	if err != nil {
 		return nil, err
 	}
+	log.Warn("[dbg] encodeCommitmentState", "blockNum", blockNum, "sdc.sharedDomains.txNum", sdc.sharedDomains.txNum)
 	return encoded, nil
 }
 

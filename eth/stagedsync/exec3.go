@@ -309,7 +309,7 @@ func ExecV3(ctx context.Context,
 	}
 
 	//if maxBlockNum > blockNum+16 {
-	_prevStageProgress, _ := getStageProgress(txc.Tx, cfg.db, stages.Senders)
+	_prevStageProgress, _ := getStageProgress(applyTx, nil, stages.Senders)
 	if err != nil {
 		return err
 	}

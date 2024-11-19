@@ -242,6 +242,15 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 		defer tx.Rollback()
 	}
 	blockFrom := s.PruneProgress
+	if blockFrom == 0 {
+		k, err := kv.FirstKey(tx, kv.HeaderCanonical)
+		if err != nil {
+			return err
+		}
+		if k != nil {
+			blockFrom = binary.BigEndian.Uint64(k)
+		}
+	}
 	var blockTo uint64
 
 	var pruneBor bool
@@ -269,7 +278,7 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 		for ; pruneBlockNum < blockTo; pruneBlockNum++ {
 			select {
 			case <-logEvery.C:
-				logger.Info(fmt.Sprintf("[%s] pruning tx lookup periodic progress", logPrefix), "blockNum", pruneBlockNum)
+				logger.Info(fmt.Sprintf("[%s] progress", logPrefix), "blockNum", pruneBlockNum)
 			default:
 			}
 

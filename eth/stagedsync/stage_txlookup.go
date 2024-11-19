@@ -265,6 +265,7 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 		pruneBor = true
 	} else {
 		blockTo = cfg.blockReader.CanPruneTo(s.ForwardProgress)
+		log.Warn("[dbg] tx_lookup3", "blockTo", blockTo, "s.ForwardProgress", s.ForwardProgress, "s.PruneProgress", s.PruneProgress)
 	}
 
 	pruneTimeout := time.Hour // aggressive pruning at non-chain-tip

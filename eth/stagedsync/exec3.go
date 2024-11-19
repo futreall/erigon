@@ -623,6 +623,7 @@ Loop:
 				return err
 			}
 			ts += time.Since(start)
+			t2 := time.Now()
 			aggTx.RestrictSubsetFileDeletions(false)
 			executor.domains().SavePastChangesetAccumulator(b.Hash(), blockNum, changeset)
 			if !inMemExec {
@@ -631,6 +632,7 @@ Loop:
 				}
 			}
 			executor.domains().SetChangesetAccumulator(nil)
+			log.Warn("[dbg] chain tip", "ComputeCommitment", time.Since(start), "WriteDiffSet", time.Since(t2))
 		}
 
 		mxExecBlocks.Add(1)

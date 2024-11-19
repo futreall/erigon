@@ -939,24 +939,6 @@ func (sd *SharedDomains) Flush(ctx context.Context, tx kv.RwTx) error {
 			return err
 		}
 	}
-	if dbg.PruneOnFlushTimeout != 0 {
-		_, err = sd.aggTx.PruneSmallBatches(ctx, dbg.PruneOnFlushTimeout, tx)
-		if err != nil {
-			return err
-		}
-	}
-	for _, w := range sd.domainWriters {
-		if w == nil {
-			continue
-		}
-		w.close()
-	}
-	for _, w := range sd.iiWriters {
-		if w == nil {
-			continue
-		}
-		w.close()
-	}
 	log.Warn(fmt.Sprintf("[dbg] Trie Flush: diffsWrite=%s, calc=%s, dom=%s, ii=%s\n", d0, d1, d2, time.Since(t3)))
 
 	return nil

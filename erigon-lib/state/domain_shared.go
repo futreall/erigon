@@ -920,6 +920,7 @@ func (sd *SharedDomains) Flush(ctx context.Context, tx kv.RwTx) error {
 		_, f, l, _ := runtime.Caller(1)
 		fmt.Printf("[SD aggTx=%d] FLUSHING at tx %d [%x], caller %s:%d\n", sd.aggTx.id, sd.TxNum(), fh, filepath.Base(f), l)
 	}
+	t2 := time.Now()
 	for _, w := range sd.domainWriters {
 		if w == nil {
 			continue
@@ -928,6 +929,8 @@ func (sd *SharedDomains) Flush(ctx context.Context, tx kv.RwTx) error {
 			return err
 		}
 	}
+	d2 := time.Since(t2)
+	t3 := time.Now()
 	for _, w := range sd.iiWriters {
 		if w == nil {
 			continue
@@ -942,15 +945,12 @@ func (sd *SharedDomains) Flush(ctx context.Context, tx kv.RwTx) error {
 			return err
 		}
 	}
-	t2 := time.Now()
 	for _, w := range sd.domainWriters {
 		if w == nil {
 			continue
 		}
 		w.close()
 	}
-	d2 := time.Since(t2)
-	t3 := time.Now()
 	for _, w := range sd.iiWriters {
 		if w == nil {
 			continue

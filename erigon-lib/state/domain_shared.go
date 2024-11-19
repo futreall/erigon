@@ -1332,6 +1332,7 @@ func (sdc *SharedDomainsCommitmentContext) storeCommitmentState(blockNum uint64,
 	if sdc.sharedDomains.aggTx == nil {
 		return fmt.Errorf("store commitment state: AggregatorContext is not initialized")
 	}
+	log.Warn("[dbg] storeCommitmentState", "blockNum", blockNum, "sdc.sharedDomains.txNum", sdc.sharedDomains.txNum)
 	encodedState, err := sdc.encodeCommitmentState(blockNum, sdc.sharedDomains.txNum)
 	if err != nil {
 		return err

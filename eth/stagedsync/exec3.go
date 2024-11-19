@@ -846,7 +846,7 @@ func flushAndCheckCommitmentV3(ctx context.Context, header *types.Header, applyT
 			}
 			d3 := time.Since(t3)
 
-			logger.Warn(fmt.Sprintf("[%s] Trie: calc=%s, flush=%s, %s", e.LogPrefix(), d1, d2, d3))
+			log.Warn(fmt.Sprintf("[%s] Trie: calc=%s, flush=%s, %s", e.LogPrefix(), d1, d2, d3))
 		}
 		return true, nil
 	}

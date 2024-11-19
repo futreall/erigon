@@ -1448,5 +1448,6 @@ func (sdc *SharedDomainsCommitmentContext) restorePatriciaState(value []byte) (u
 	} else {
 		return 0, 0, errors.New("state storing is only supported hex patricia trie")
 	}
+	log.Warn("[dbg] restorePatriciaState1", "cs.blockNum", cs.blockNum, "cs.txNum", cs.txNum)
 	return cs.blockNum, cs.txNum, nil
 }

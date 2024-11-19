@@ -251,6 +251,9 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 		if firstNonGenesisHeader != nil {
 			blockFrom = binary.BigEndian.Uint64(firstNonGenesisHeader)
 			log.Warn("[dbg] tx_lookup2", "blockFrom", blockFrom)
+		} else {
+			blockFrom = s.ForwardProgress
+			log.Warn("[dbg] tx_lookup2", "blockFrom", blockFrom)
 		}
 	}
 

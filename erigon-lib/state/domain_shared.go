@@ -1304,6 +1304,9 @@ func (sdc *SharedDomainsCommitmentContext) ComputeCommitment(ctx context.Context
 		return rootHash, err
 	}
 
+	defer func(t time.Time) {
+		log.Warn(fmt.Sprintf("domain_shared.go:1307: %s, %s\n", time.Since(t), dbg.Stack()))
+	}(time.Now())
 	// data accessing functions should be set when domain is opened/shared context updated
 	sdc.patriciaTrie.SetTrace(sdc.sharedDomains.trace)
 	sdc.Reset()

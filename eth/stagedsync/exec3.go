@@ -840,13 +840,7 @@ func flushAndCheckCommitmentV3(ctx context.Context, header *types.Header, applyT
 				return false, err
 			}
 			d2 := time.Since(t2)
-			t3 := time.Now()
-			if err = applyTx.(state2.HasAggTx).AggTx().(*state2.AggregatorRoTx).PruneCommitHistory(ctx, applyTx, nil); err != nil {
-				return false, err
-			}
-			d3 := time.Since(t3)
-
-			log.Warn(fmt.Sprintf("[%s] Trie: calc=%s, flush=%s, %s", e.LogPrefix(), d1, d2, d3))
+			log.Warn(fmt.Sprintf("[%s] Trie: calc=%s, flush=%s", e.LogPrefix(), d1, d2))
 		}
 		return true, nil
 	}

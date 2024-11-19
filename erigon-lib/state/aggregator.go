@@ -1163,35 +1163,6 @@ func (as *AggregatorPruneStat) Accumulate(other *AggregatorPruneStat) {
 	}
 }
 
-// temporal function to prune history straight after commitment is done - reduce history size in db until we build
-// pruning in background. This helps on chain-tip performance (while full pruning is not available we can prune at least commit)
-func (ac *AggregatorRoTx) PruneCommitHistory(ctx context.Context, tx kv.RwTx, logEvery *time.Ticker) error {
-	cd := ac.d[kv.CommitmentDomain]
-	if cd.ht.h.historyDisabled {
-		return nil
-	}
-
-	txFrom := uint64(0)
-	canHist, txTo := cd.ht.canPruneUntil(tx, math.MaxUint64)
-	if dbg.NoPrune() || !canHist {
-		return nil
-	}
-
-	if logEvery == nil {
-		logEvery = time.NewTicker(30 * time.Second)
-		defer logEvery.Stop()
-	}
-	defer mxPruneTookAgg.ObserveDuration(time.Now())
-
-	stat, err := cd.ht.Prune(ctx, tx, txFrom, txTo, math.MaxUint64, true, logEvery)
-	if err != nil {
-		return err
-	}
-
-	ac.a.logger.Info("commitment history backpressure pruning", "pruned", stat.String())
-	return nil
-}
-
 func (ac *AggregatorRoTx) Prune(ctx context.Context, tx kv.RwTx, limit uint64, logEvery *time.Ticker) (*AggregatorPruneStat, error) {
 	defer mxPruneTookAgg.ObserveDuration(time.Now())
 

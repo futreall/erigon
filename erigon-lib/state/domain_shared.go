@@ -330,7 +330,7 @@ func (sd *SharedDomains) SeekCommitment(ctx context.Context, tx kv.Tx) (txsFromB
 				return 0, errors.WithMessage(ErrBehindCommitment, fmt.Sprintf("TxNums index is at block %d and behind commitment %d", lastBn, bn))
 			}
 		}
-		log.Warn("[dbg] SeekCommitment", "bn", bn, "txn", txn)
+		log.Warn("[dbg] SeekCommitment1", "bn", bn, "txn", txn)
 		sd.SetBlockNum(bn)
 		sd.SetTxNum(txn)
 		return 0, nil
@@ -366,6 +366,7 @@ func (sd *SharedDomains) SeekCommitment(ctx context.Context, tx kv.Tx) (txsFromB
 	if sd.trace {
 		fmt.Printf("rebuilt commitment %x %d %d\n", newRh, sd.TxNum(), sd.BlockNum())
 	}
+	log.Warn("[dbg] SeekCommitment2", "bn", bn, "txn", txn)
 	sd.SetBlockNum(bn)
 	sd.SetTxNum(txn)
 	return 0, nil

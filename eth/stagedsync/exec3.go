@@ -308,10 +308,10 @@ func ExecV3(ctx context.Context,
 		shouldGenerateChangesets = false
 	}
 
-	if maxBlockNum > blockNum+16 {
-		log.Info(fmt.Sprintf("[%s] starting", execStage.LogPrefix()),
-			"inMem", inMemExec, "from", blockNum, "to", maxBlockNum, "fromTxNum", doms.TxNum(), "offsetFromBlockBeginning", offsetFromBlockBeginning, "initialCycle", initialCycle, "useExternalTx", useExternalTx, "inMem", inMemExec)
-	}
+	//if maxBlockNum > blockNum+16 {
+	log.Info(fmt.Sprintf("[%s] starting", execStage.LogPrefix()),
+		"inMem", inMemExec, "from", blockNum, "to", maxBlockNum, "execStage.BlockNumber", execStage.BlockNumber, "maxBlockNum", maxBlockNum, "fromTxNum", doms.TxNum(), "offsetFromBlockBeginning", offsetFromBlockBeginning, "initialCycle", initialCycle, "useExternalTx", useExternalTx, "inMem", inMemExec)
+	//}
 
 	agg.BuildFilesInBackground(outputTxNum.Load())
 

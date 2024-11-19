@@ -252,7 +252,9 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 		}
 	}
 
-	var blockTo, pruneBor uint64
+	var blockTo uint64
+
+	var pruneBor bool
 	// Forward stage doesn't write anything before PruneTo point
 	if cfg.prune.History.Enabled() {
 		blockTo = cfg.prune.History.PruneTo(s.ForwardProgress)

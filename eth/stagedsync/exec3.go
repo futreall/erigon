@@ -630,7 +630,6 @@ Loop:
 			}
 			ts += time.Since(startCommitment)
 
-			t2 := time.Now()
 			aggTx.RestrictSubsetFileDeletions(false)
 			executor.domains().SavePastChangesetAccumulator(b.Hash(), blockNum, changeset)
 			if !inMemExec {

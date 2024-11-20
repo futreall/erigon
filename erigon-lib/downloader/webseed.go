@@ -93,6 +93,8 @@ func (d *WebSeeds) getWebDownloadInfo(ctx context.Context, t *torrent.Torrent) (
 			headResponse.Body.Close()
 
 			if headResponse.StatusCode != http.StatusOK {
+				d.logger.Warn("[dbg-milen] getWebDownloadInfo: HEAD request failed",
+					"webseed", webseed.String(), "name", t.Name(), "status", headResponse.Status)
 				d.logger.Warn("[snapshots.webseed] getWebDownloadInfo: HEAD request failed",
 					"webseed", webseed.String(), "name", t.Name(), "status", headResponse.Status)
 				continue
@@ -111,6 +113,7 @@ func (d *WebSeeds) getWebDownloadInfo(ctx context.Context, t *torrent.Torrent) (
 						torrent: t,
 					})
 				} else {
+					d.logger.Info("[dbg-milen] getWebpeerTorrentInfo hash mismatch", "err", err)
 					hash := meta.HashInfoBytes()
 					seedHashMismatches = append(seedHashMismatches, &seedHash{url: webseed, hash: &hash})
 				}

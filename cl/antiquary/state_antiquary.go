@@ -532,6 +532,7 @@ func (s *Antiquary) IncrementBeaconState(ctx context.Context, to uint64) error {
 		}
 		if s.downloader != nil {
 			// Notify bittorent to seed the new snapshots
+			log.Info("[dbg-milen] Antiquary.IncrementBeaconState AddRequest", "info", fmt.Sprintf("%+v", paths))
 			if _, err := s.downloader.Add(s.ctx, &proto_downloader.AddRequest{Items: downloadItems}); err != nil {
 				s.logger.Warn("[Antiquary] Failed to add items to bittorent", "err", err)
 			}

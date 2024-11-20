@@ -18,6 +18,7 @@ package antiquary
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"math"
 	"strings"
@@ -334,6 +335,7 @@ func (a *Antiquary) antiquate() error {
 	}
 	if a.downloader != nil {
 		// Notify bittorent to seed the new snapshots
+		log.Info("[dbg-milen] Antiquary.antiquate AddRequest", "info", fmt.Sprintf("%+v", paths))
 		if _, err := a.downloader.Add(a.ctx, &proto_downloader.AddRequest{Items: downloadItems}); err != nil {
 			a.logger.Warn("[Antiquary] Failed to add items to bittorent", "err", err)
 		}
@@ -415,6 +417,7 @@ func (a *Antiquary) antiquateBlobs() error {
 	}
 	if a.downloader != nil {
 		// Notify bittorent to seed the new snapshots
+		log.Info("[dbg-milen] Antiquary.antiquateBlobs AddRequest", "info", fmt.Sprintf("%+v", paths))
 		if _, err := a.downloader.Add(a.ctx, &proto_downloader.AddRequest{Items: downloadItems}); err != nil {
 			a.logger.Warn("[Antiquary] Failed to add items to bittorent", "err", err)
 		}

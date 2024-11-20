@@ -128,6 +128,7 @@ func RequestSnapshotsDownload(ctx context.Context, downloadRequest []DownloadReq
 	downloader.SetLogPrefix(ctx, preq)
 	// start seed large .seg of large size
 	req := BuildProtoRequest(downloadRequest)
+	log.Info("[dbg-milen] RequestSnapshotsDownload", "info", fmt.Sprintf("%+v", downloadRequest))
 	if _, err := downloader.Add(ctx, req); err != nil {
 		return err
 	}
@@ -365,6 +366,7 @@ func WaitForDownloader(ctx context.Context, logPrefix string, dirs datadir.Dirs,
 			return ctx.Err()
 		default:
 		}
+		log.Info("[dbg-milen] WaitForDownloader", "info", fmt.Sprintf("%+v", downloadRequest))
 		if err := RequestSnapshotsDownload(ctx, downloadRequest, snapshotDownloader, logPrefix); err != nil {
 			log.Error(fmt.Sprintf("[%s] call downloader", logPrefix), "err", err)
 			time.Sleep(10 * time.Second)

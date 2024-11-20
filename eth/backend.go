@@ -1470,6 +1470,7 @@ func (s *Ethereum) setUpSnapDownloader(ctx context.Context, downloaderCfg *downl
 					Path: filepath.Join("history", fName),
 				})
 			}
+			log.Info("[dbg-milen] agg.OnFreeze AddRequest", "info", fmt.Sprintf("%+v", frozenFileNames))
 			if _, err := s.downloaderClient.Add(ctx, req); err != nil {
 				s.logger.Warn("[snapshots] notify downloader", "err", err)
 			}

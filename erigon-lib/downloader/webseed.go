@@ -106,14 +106,16 @@ func (d *WebSeeds) getWebDownloadInfo(ctx context.Context, t *torrent.Torrent) (
 						md5tag = strings.Trim(md5tag, "\"")
 					}
 
-					infos = append(infos, webDownloadInfo{
+					wi := webDownloadInfo{
 						url:     downloadUrl,
 						length:  headResponse.ContentLength,
 						md5:     md5tag,
 						torrent: t,
-					})
+					}
+					d.logger.Info("[dbg-milen] getWebpeerTorrentInfo added", "wi", wi, "downloadUrl", downloadUrl)
+					infos = append(infos, wi)
 				} else {
-					d.logger.Info("[dbg-milen] getWebpeerTorrentInfo hash mismatch", "err", err)
+					d.logger.Info("[dbg-milen] getWebpeerTorrentInfo hash mismatch", "err", err, "downloadUrl", downloadUrl)
 					hash := meta.HashInfoBytes()
 					seedHashMismatches = append(seedHashMismatches, &seedHash{url: webseed, hash: &hash})
 				}

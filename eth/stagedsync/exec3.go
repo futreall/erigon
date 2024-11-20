@@ -447,6 +447,7 @@ func ExecV3(ctx context.Context,
 
 Loop:
 	for ; blockNum <= maxBlockNum; blockNum++ {
+		startBlock := time.Now()
 		// set shouldGenerateChangesets=true if we are at last n blocks from maxBlockNum. this is as a safety net in chains
 		// where during initial sync we can expect bogus blocks to be imported.
 		if !shouldGenerateChangesets && shouldGenerateChangesetsForLastBlocks && blockNum > cfg.blockReader.FrozenBlocks() && blockNum+changesetSafeRange >= maxBlockNum {
@@ -618,6 +619,8 @@ Loop:
 		mxExecBlocks.Add(1)
 
 		if shouldGenerateChangesets {
+			blockTook := time.Since(startBlock)
+
 			aggTx := executor.tx().(state2.HasAggTx).AggTx().(*state2.AggregatorRoTx)
 			aggTx.RestrictSubsetFileDeletions(true)
 			startCommitment := time.Now()
@@ -625,6 +628,7 @@ Loop:
 				return err
 			}
 			ts += time.Since(startCommitment)
+
 			t2 := time.Now()
 			aggTx.RestrictSubsetFileDeletions(false)
 			executor.domains().SavePastChangesetAccumulator(b.Hash(), blockNum, changeset)
@@ -634,7 +638,7 @@ Loop:
 				}
 			}
 			executor.domains().SetChangesetAccumulator(nil)
-			log.Warn("[dbg] chain tip", "ComputeCommitment", time.Since(startCommitment), "Total", time.Since(start), "WriteDiffSet", time.Since(t2), "inMem", inMemExec, "blk", blockNum)
+			log.Warn("[dbg] chain tip", "ComputeCommitment", time.Since(startCommitment), "Exec", blockTook, "WriteDiffSet", time.Since(t2), "inMem", inMemExec, "blk", blockNum)
 		}
 
 		mxExecBlocks.Add(1)

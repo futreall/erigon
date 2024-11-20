@@ -251,17 +251,14 @@ func PruneTxLookup(s *PruneState, tx kv.RwTx, cfg TxLookupCfg, ctx context.Conte
 		}
 		if firstNonGenesisHeader != nil {
 			blockFrom = binary.BigEndian.Uint64(firstNonGenesisHeader)
-			log.Warn("[dbg] tx_lookup2.1", "blockFrom", blockFrom)
 		} else {
 			execProgress, err := getStageProgress(tx, nil, stages.Senders)
 			if err != nil {
 				return err
 			}
 			blockFrom = execProgress
-			log.Warn("[dbg] tx_lookup2.2", "blockFrom", blockFrom)
 		}
 	}
-
 	var blockTo uint64
 
 	var pruneBor bool

@@ -304,7 +304,7 @@ func ExecV3(ctx context.Context,
 	}
 
 	shouldGenerateChangesets := maxBlockNum-blockNum <= changesetSafeRange || cfg.keepAllChangesets
-	if inMemExec || isMining || blockNum < cfg.blockReader.FrozenBlocks() {
+	if isMining || blockNum < cfg.blockReader.FrozenBlocks() {
 		shouldGenerateChangesets = false
 	}
 
@@ -634,7 +634,7 @@ Loop:
 				}
 			}
 			executor.domains().SetChangesetAccumulator(nil)
-			log.Warn("[dbg] chain tip", "ComputeCommitment", time.Since(start), "WriteDiffSet", time.Since(t2))
+			log.Warn("[dbg] chain tip", "ComputeCommitment", time.Since(start), "WriteDiffSet", time.Since(t2), "inMem", inMemExec)
 		}
 
 		mxExecBlocks.Add(1)

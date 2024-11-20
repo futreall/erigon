@@ -228,6 +228,8 @@ func New(ctx context.Context, dirs datadir.Dirs, version string, verbosity lg.Le
 		return nil, err
 	}
 
+	println(fmt.Sprintf("webseedFileProviders: %+v", webseedFileProviders))
+	println(fmt.Sprintf("webseedHttpProviders: %+v", webseedHttpProviders))
 	return &Cfg{Dirs: dirs, ChainName: chainName,
 		ClientConfig: torrentConfig, DownloadSlots: downloadSlots,
 		WebSeedUrls: webseedHttpProviders, WebSeedFileProviders: webseedFileProviders,

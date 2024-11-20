@@ -1044,6 +1044,7 @@ func (d *Downloader) mainLoop(silent bool) error {
 				delete(checking, status.name)
 
 				if status.spec != nil {
+					d.logger.Info("adding torrent spec", "location", "downloadComplete", "name", status.spec.DisplayName)
 					_, _, err := d.torrentClient.AddTorrentSpec(status.spec)
 
 					if err != nil {
@@ -2596,6 +2597,7 @@ func (d *Downloader) AddMagnetLink(ctx context.Context, infoHash metainfo.Hash, 
 			// TOOD: add `d.webseeds.Complete` chan - to prevent race - Discover is also async
 			// TOOD: maybe run it in goroutine and return channel - to select with p2p
 
+			println(fmt.Sprintf("fallback to r2: %s", name))
 			ts, ok, err := d.webseeds.DownloadAndSaveTorrentFile(ctx, name)
 			if ok && err == nil {
 				_, _, err = addTorrentFile(ctx, ts, d.torrentClient, d.db, d.webseeds)

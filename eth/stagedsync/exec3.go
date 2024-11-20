@@ -634,7 +634,7 @@ Loop:
 				}
 			}
 			executor.domains().SetChangesetAccumulator(nil)
-			log.Warn("[dbg] chain tip", "ComputeCommitment", time.Since(start), "WriteDiffSet", time.Since(t2), "inMem", inMemExec)
+			log.Warn("[dbg] chain tip", "ComputeCommitment", time.Since(start), "WriteDiffSet", time.Since(t2), "inMem", inMemExec, "blk", blockNum)
 		}
 
 		mxExecBlocks.Add(1)

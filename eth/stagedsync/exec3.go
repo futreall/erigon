@@ -296,7 +296,8 @@ func ExecV3(ctx context.Context,
 	}
 
 	ts := time.Duration(0)
-	blockNum = doms.BlockNum()
+	startBlockNum := doms.BlockNum()
+	blockNum = startBlockNum
 	outputTxNum.Store(doms.TxNum())
 
 	if maxBlockNum < blockNum {
@@ -733,10 +734,12 @@ Loop:
 
 	if u != nil && !u.HasUnwindPoint() {
 		if b != nil {
+			commitmentStart := time.Now()
 			_, err := flushAndCheckCommitmentV3(ctx, b.HeaderNoCopy(), executor.tx(), executor.domains(), cfg, execStage, stageProgress, parallel, logger, u, inMemExec)
 			if err != nil {
 				return err
 			}
+			log.Warn("[dbg] chain tip2", "ComputeCommitment", time.Since(commitmentStart), "Exec", time.Since(start), "inMem", inMemExec, "blk", blockNum, "startBlockNum", startBlockNum)
 		} else {
 			fmt.Printf("[dbg] mmmm... do we need action here????\n")
 		}

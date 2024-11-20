@@ -452,13 +452,13 @@ Loop:
 		if !shouldGenerateChangesets && shouldGenerateChangesetsForLastBlocks && blockNum > cfg.blockReader.FrozenBlocks() && blockNum+changesetSafeRange >= maxBlockNum {
 			aggTx := executor.tx().(state2.HasAggTx).AggTx().(*state2.AggregatorRoTx)
 			aggTx.RestrictSubsetFileDeletions(true)
-			start := time.Now()
+			startCommitment := time.Now()
 			executor.domains().SetChangesetAccumulator(nil) // Make sure we don't have an active changeset accumulator
 			// First compute and commit the progress done so far
 			if _, err := executor.domains().ComputeCommitment(ctx, true, blockNum, execStage.LogPrefix()); err != nil {
 				return err
 			}
-			ts += time.Since(start)
+			ts += time.Since(startCommitment)
 			aggTx.RestrictSubsetFileDeletions(false)
 			shouldGenerateChangesets = true // now we can generate changesets for the safety net
 		}
@@ -620,11 +620,11 @@ Loop:
 		if shouldGenerateChangesets {
 			aggTx := executor.tx().(state2.HasAggTx).AggTx().(*state2.AggregatorRoTx)
 			aggTx.RestrictSubsetFileDeletions(true)
-			start := time.Now()
+			startCommitment := time.Now()
 			if _, err := executor.domains().ComputeCommitment(ctx, true, blockNum, execStage.LogPrefix()); err != nil {
 				return err
 			}
-			ts += time.Since(start)
+			ts += time.Since(startCommitment)
 			t2 := time.Now()
 			aggTx.RestrictSubsetFileDeletions(false)
 			executor.domains().SavePastChangesetAccumulator(b.Hash(), blockNum, changeset)
@@ -634,7 +634,7 @@ Loop:
 				}
 			}
 			executor.domains().SetChangesetAccumulator(nil)
-			log.Warn("[dbg] chain tip", "ComputeCommitment", time.Since(start), "WriteDiffSet", time.Since(t2), "inMem", inMemExec, "blk", blockNum)
+			log.Warn("[dbg] chain tip", "ComputeCommitment", time.Since(startCommitment), "Total", time.Since(start), "WriteDiffSet", time.Since(t2), "inMem", inMemExec, "blk", blockNum)
 		}
 
 		mxExecBlocks.Add(1)

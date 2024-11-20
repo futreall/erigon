@@ -2742,10 +2742,10 @@ func (d *Downloader) addTorrentFilesFromDisk(quiet bool) error {
 		ts := ts
 		i := i
 		eg.Go(func() error {
-			d.logger.Info("[dbg-milen] AddNewSeedableFile", "name", ts.DisplayName)
+			d.logger.Info("[dbg-milen] addTorrentFilesFromDisk", "name", ts.DisplayName)
 			_, _, err := addTorrentFile(ctx, ts, d.torrentClient, d.db, d.webseeds)
 			if err != nil {
-				d.logger.Info("[dbg-milen] err AddNewSeedableFile", "name", ts.DisplayName, "err", err)
+				d.logger.Info("[dbg-milen] err addTorrentFilesFromDisk", "name", ts.DisplayName, "err", err)
 				return err
 			}
 			select {

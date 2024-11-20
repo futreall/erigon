@@ -331,6 +331,7 @@ func addTorrentFile(ctx context.Context, ts *torrent.TorrentSpec, torrentClient 
 	t, ok, err = _addTorrentFile(ctx, ts, torrentClient, db, webseeds)
 
 	if err != nil {
+		log.Info("[dbg-milen] setting chunk size to 0")
 		ts.ChunkSize = 0
 		return _addTorrentFile(ctx, ts, torrentClient, db, webseeds)
 	}
@@ -351,9 +352,10 @@ func _addTorrentFile(ctx context.Context, ts *torrent.TorrentSpec, torrentClient
 	t, have = torrentClient.Torrent(ts.InfoHash)
 
 	if !have {
-		log.Info("adding torrent spec", "location", "_addTorrentFile !have", "name", ts.DisplayName)
+		log.Info("[dbg-milen] adding torrent spec", "location", "_addTorrentFile !have", "name", ts.DisplayName)
 		t, _, err := torrentClient.AddTorrentSpec(ts)
 		if err != nil {
+			log.Info("[dbg-milen] err adding torrent spec", "location", "_addTorrentFile !have", "name", ts.DisplayName)
 			return nil, false, fmt.Errorf("addTorrentFile %s: %w", ts.DisplayName, err)
 		}
 
@@ -377,9 +379,10 @@ func _addTorrentFile(ctx context.Context, ts *torrent.TorrentSpec, torrentClient
 			return nil, false, fmt.Errorf("update torrent info %s: %w", ts.DisplayName, err)
 		}
 	} else {
-		log.Info("adding torrent spec", "location", "_addTorrentFile t.Info() == nil", "name", ts.DisplayName)
+		log.Info("[dbg-milen] adding torrent spec", "location", "_addTorrentFile t.Info() == nil", "name", ts.DisplayName)
 		t, _, err = torrentClient.AddTorrentSpec(ts)
 		if err != nil {
+			log.Info("[dbg-milen] err adding torrent spec", "location", "_addTorrentFile t.Info() == nil", "name", ts.DisplayName)
 			return t, true, fmt.Errorf("add torrent file %s: %w", ts.DisplayName, err)
 		}
 

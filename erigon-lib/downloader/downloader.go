@@ -841,8 +841,10 @@ func (d *Downloader) mainLoop(silent bool) error {
 					if t.Info() == nil {
 						ts, ok, err := d.webseeds.DownloadAndSaveTorrentFile(d.ctx, t.Name())
 						if ok && err == nil {
+							d.logger.Info("[dbg-milen] add torrent from mail loop webseeds", "name", ts.DisplayName)
 							_, _, err = addTorrentFile(d.ctx, ts, d.torrentClient, d.db, d.webseeds)
 							if err != nil {
+								d.logger.Info("[dbg-milen] err add torrent from mail loop webseeds", "name", ts.DisplayName, "err", err)
 								d.logger.Warn("[snapshots] addTorrentFile from webseed", "err", err)
 								continue
 							}
@@ -1044,7 +1046,7 @@ func (d *Downloader) mainLoop(silent bool) error {
 				delete(checking, status.name)
 
 				if status.spec != nil {
-					d.logger.Info("adding torrent spec", "location", "downloadComplete", "name", status.spec.DisplayName)
+					d.logger.Info("[dbg-milen] adding torrent spec", "location", "downloadComplete", "name", status.spec.DisplayName)
 					_, _, err := d.torrentClient.AddTorrentSpec(status.spec)
 
 					if err != nil {
@@ -2531,8 +2533,10 @@ func (d *Downloader) AddNewSeedableFile(ctx context.Context, name string) error 
 	if err != nil {
 		return fmt.Errorf("AddNewSeedableFile: %w", err)
 	}
+	d.logger.Info("[dbg-milen] AddNewSeedableFile", "name", name)
 	_, _, err = addTorrentFile(ctx, ts, d.torrentClient, d.db, d.webseeds)
 	if err != nil {
+		d.logger.Info("[dbg-milen] err AddNewSeedableFile", "name", name, "err", err)
 		return fmt.Errorf("addTorrentFile: %w", err)
 	}
 	return nil
@@ -2597,11 +2601,13 @@ func (d *Downloader) AddMagnetLink(ctx context.Context, infoHash metainfo.Hash, 
 			// TOOD: add `d.webseeds.Complete` chan - to prevent race - Discover is also async
 			// TOOD: maybe run it in goroutine and return channel - to select with p2p
 
-			println(fmt.Sprintf("fallback to r2: %s", name))
+			d.logger.Info("[dbg-milen] fallback to r2", "name", name)
 			ts, ok, err := d.webseeds.DownloadAndSaveTorrentFile(ctx, name)
 			if ok && err == nil {
+				d.logger.Info("[dbg-milen] AddMagnetLink", "name", name)
 				_, _, err = addTorrentFile(ctx, ts, d.torrentClient, d.db, d.webseeds)
 				if err != nil {
+					d.logger.Info("[dbg-milen] err AddMagnetLink", "name", name, "err", err)
 					return
 				}
 				return
@@ -2736,8 +2742,10 @@ func (d *Downloader) addTorrentFilesFromDisk(quiet bool) error {
 		ts := ts
 		i := i
 		eg.Go(func() error {
+			d.logger.Info("[dbg-milen] AddNewSeedableFile", "name", ts.DisplayName)
 			_, _, err := addTorrentFile(ctx, ts, d.torrentClient, d.db, d.webseeds)
 			if err != nil {
+				d.logger.Info("[dbg-milen] err AddNewSeedableFile", "name", ts.DisplayName, "err", err)
 				return err
 			}
 			select {

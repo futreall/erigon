@@ -28,7 +28,9 @@ import (
 
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
+
 	"github.com/erigontech/erigon-lib/common/dir"
+	"github.com/erigontech/erigon-lib/log/v3"
 )
 
 // AtomicTorrentFS - does provide thread-safe CRUD operations on .torrent files
@@ -184,6 +186,9 @@ func (tf *AtomicTorrentFS) load(fPath string) (*torrent.TorrentSpec, error) {
 	mi, err := metainfo.LoadFromFile(fPath)
 	if err != nil {
 		return nil, fmt.Errorf("LoadFromFile: %w, file=%s", err, fPath)
+	}
+	if strings.Contains(fPath, "salt") {
+		log.Info("[dbg-milen] AtomicTorrentFS.load salt meta info", "mi", fmt.Sprintf("%+v", mi))
 	}
 	mi.AnnounceList = Trackers
 	return torrent.TorrentSpecFromMetaInfoErr(mi)

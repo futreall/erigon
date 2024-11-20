@@ -314,9 +314,11 @@ func ExecV3(ctx context.Context,
 		return err
 	}
 	viewID := applyTx.ViewID()
-	log.Info(fmt.Sprintf("[%s] starting", execStage.LogPrefix()),
-		"inMem", inMemExec, "from", blockNum, "to", maxBlockNum, "execStage.BlockNumber", execStage.BlockNumber, "maxBlockNum", maxBlockNum, "prevStageProgress", _prevStageProgress, "viewID", viewID, "fromTxNum", doms.TxNum(), "offsetFromBlockBeginning", offsetFromBlockBeginning, "initialCycle", initialCycle, "useExternalTx", useExternalTx, "inMem", inMemExec)
-	//}
+	if !inMemExec {
+		log.Info(fmt.Sprintf("[%s] starting", execStage.LogPrefix()),
+			"inMem", inMemExec, "from", blockNum, "to", maxBlockNum, "execStage.BlockNumber", execStage.BlockNumber, "maxBlockNum", maxBlockNum, "prevStageProgress", _prevStageProgress, "viewID", viewID, "fromTxNum", doms.TxNum(), "offsetFromBlockBeginning", offsetFromBlockBeginning, "initialCycle", initialCycle, "useExternalTx", useExternalTx, "inMem", inMemExec)
+		//}
+	}
 
 	agg.BuildFilesInBackground(outputTxNum.Load())
 

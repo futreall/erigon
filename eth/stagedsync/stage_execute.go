@@ -115,9 +115,18 @@ func StageExecuteBlocksCfg(
 	genesis *types.Genesis,
 	syncCfg ethconfig.Sync,
 	silkworm *silkworm.Silkworm,
+
+	applyWorker, applyWorkerMining *exec3.Worker,
 ) ExecuteBlockCfg {
 	if dirs.SnapDomain == "" {
 		panic("empty `dirs` variable")
+	}
+
+	if applyWorker == nil {
+		applyWorker = exec3.NewWorker(nil, log.Root(), context.Background(), false, db, nil, blockReader, chainConfig, genesis, nil, engine, dirs, false)
+	}
+	if applyWorkerMining == nil {
+		applyWorkerMining = exec3.NewWorker(nil, log.Root(), context.Background(), false, db, nil, blockReader, chainConfig, genesis, nil, engine, dirs, true)
 	}
 
 	return ExecuteBlockCfg{
@@ -137,10 +146,10 @@ func StageExecuteBlocksCfg(
 		historyV3:         true,
 		syncCfg:           syncCfg,
 		silkworm:          silkworm,
-		applyWorker:       exec3.NewWorker(nil, log.Root(), context.Background(), false, db, nil, blockReader, chainConfig, genesis, nil, engine, dirs, false),
-		applyWorkerMining: exec3.NewWorker(nil, log.Root(), context.Background(), false, db, nil, blockReader, chainConfig, genesis, nil, engine, dirs, true),
 		keepAllChangesets: keepAllChangesets,
 		chaosMonkey:       chaosMonkey,
+		applyWorker:       applyWorker,
+		applyWorkerMining: applyWorkerMining,
 	}
 }
 

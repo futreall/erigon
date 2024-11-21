@@ -450,8 +450,9 @@ func GnoPectraDevnet1GenesisBlock() *types.Genesis {
 	return &types.Genesis{
 		Config:     params.GnoPectraDevnet1Config,
 		AuRaSeal:   common.FromHex("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+		AuRaStep: 0,
 		GasLimit:   0x989680,
-		Difficulty: big.NewInt(1),
+		Difficulty: big.NewInt(0x1),
 		BaseFee:    big.NewInt(0x3b9aca00),
 		Alloc:      readPrealloc("allocs/gno_pectra_1.json"),
 	}

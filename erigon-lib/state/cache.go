@@ -77,7 +77,10 @@ func (v *domainVisible) newGetFromFileCache() *DomainGetFromFileCache {
 	if !domainGetFromFileCacheEnabled {
 		return nil
 	}
-	return v.caches.Get().(*DomainGetFromFileCache)
+	if v._cacheSingletone == nil {
+		v._cacheSingletone = v.caches.Get().(*DomainGetFromFileCache)
+	}
+	return v._cacheSingletone
 }
 func (v *domainVisible) returnGetFromFileCache(c *DomainGetFromFileCache) {
 	if c == nil {

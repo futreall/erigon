@@ -118,9 +118,10 @@ type domainCfg struct {
 }
 
 type domainVisible struct {
-	files  []visibleFile
-	name   kv.Domain
-	caches *sync.Pool
+	files            []visibleFile
+	name             kv.Domain
+	caches           *sync.Pool
+	_cacheSingletone *DomainGetFromFileCache
 }
 
 var DomainCompressCfg = seg.Cfg{

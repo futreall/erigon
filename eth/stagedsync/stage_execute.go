@@ -87,11 +87,8 @@ type ExecuteBlockCfg struct {
 	syncCfg   ethconfig.Sync
 	genesis   *types.Genesis
 
-	silkworm          *silkworm.Silkworm
-	blockProduction   bool
-	keepAllChangesets bool
-
-	chaosMonkey bool
+	silkworm        *silkworm.Silkworm
+	blockProduction bool
 
 	applyWorker, applyWorkerMining *exec3.Worker
 }
@@ -106,8 +103,6 @@ func StageExecuteBlocksCfg(
 	notifications *shards.Notifications,
 	stateStream bool,
 	badBlockHalt bool,
-	keepAllChangesets bool,
-	chaosMonkey bool,
 
 	dirs datadir.Dirs,
 	blockReader services.FullBlockReader,
@@ -146,8 +141,6 @@ func StageExecuteBlocksCfg(
 		historyV3:         true,
 		syncCfg:           syncCfg,
 		silkworm:          silkworm,
-		keepAllChangesets: keepAllChangesets,
-		chaosMonkey:       chaosMonkey,
 		applyWorker:       applyWorker,
 		applyWorkerMining: applyWorkerMining,
 	}
@@ -407,7 +400,7 @@ func PruneExecutionStage(s *PruneState, tx kv.RwTx, cfg ExecuteBlockCfg, ctx con
 		}
 		defer tx.Rollback()
 	}
-	if s.ForwardProgress > config3.MaxReorgDepthV3 && !cfg.keepAllChangesets {
+	if s.ForwardProgress > config3.MaxReorgDepthV3 && !cfg.syncCfg.AlwaysGenerateChangesets {
 		// (chunkLen is 8Kb) * (1_000 chunks) = 8mb
 		// Some blocks on bor-mainnet have 400 chunks of diff = 3mb
 		var pruneDiffsLimitOnChainTip = 1_000

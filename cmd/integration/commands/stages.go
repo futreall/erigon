@@ -1060,13 +1060,14 @@ func stageExec(db kv.RwDB, ctx context.Context, logger log.Logger) error {
 	syncCfg := ethconfig.Defaults.Sync
 	syncCfg.ExecWorkerCount = int(workers)
 	syncCfg.ReconWorkerCount = int(reconWorkers)
+	syncCfg.ChaosMonkey = chaosMonkey
 
 	genesis := core.GenesisBlockByChainName(chain)
 	br, _ := blocksIO(db, logger)
 
 	cfg := stagedsync.StageExecuteBlocksCfg(db, pm, batchSize, chainConfig, engine, vmConfig, nil,
 		/*stateStream=*/ false,
-		/*badBlockHalt=*/ true /*alwaysGenerateChangesets=*/, false, chaosMonkey,
+		/*badBlockHalt=*/ true,
 		dirs, br, nil, genesis, syncCfg, nil, nil, nil)
 
 	if unwind > 0 {
@@ -1398,6 +1399,7 @@ func newSync(ctx context.Context, db kv.RwDB, miningConfig *params.MiningConfig,
 	cfg.Prune = pm
 	cfg.BatchSize = batchSize
 	cfg.DeprecatedTxPool.Disable = true
+	cfg.ChaosMonkey = chaosMonkey
 	cfg.Genesis = genesis
 	if miningConfig != nil {
 		cfg.Miner = *miningConfig
@@ -1483,8 +1485,6 @@ func newSync(ctx context.Context, db kv.RwDB, miningConfig *params.MiningConfig,
 				notifications,
 				cfg.StateStream,
 				/*stateStream=*/ false,
-				/*alwaysGenerateChangesets=*/ false,
-				chaosMonkey,
 				dirs,
 				blockReader,
 				sentryControlServer.Hd,

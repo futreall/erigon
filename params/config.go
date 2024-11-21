@@ -235,6 +235,8 @@ func ChainConfigByChainName(chain string) *chain.Config {
 		return GnosisChainConfig
 	case networkname.ChiadoChainName:
 		return ChiadoChainConfig
+	case networkname.GnoPectraDevnet1ChainName:
+		return GnoPectraDevnet1Config
 	default:
 		return nil
 	}
@@ -262,6 +264,8 @@ func GenesisHashByChainName(chain string) *libcommon.Hash {
 		return &GnosisGenesisHash
 	case networkname.ChiadoChainName:
 		return &ChiadoGenesisHash
+	case networkname.GnoPectraDevnet1ChainName:
+		return &GnoPectraDevnet1Hash
 	default:
 		return nil
 	}

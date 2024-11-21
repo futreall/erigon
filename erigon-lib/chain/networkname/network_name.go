@@ -27,4 +27,5 @@ var All = []string{
 	BorDevnetChainName,
 	GnosisChainName,
 	ChiadoChainName,
+	GnoPectraDevnet1ChainName,
 }

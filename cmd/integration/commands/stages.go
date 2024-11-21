@@ -1067,7 +1067,7 @@ func stageExec(db kv.RwDB, ctx context.Context, logger log.Logger) error {
 	cfg := stagedsync.StageExecuteBlocksCfg(db, pm, batchSize, chainConfig, engine, vmConfig, nil,
 		/*stateStream=*/ false,
 		/*badBlockHalt=*/ true /*alwaysGenerateChangesets=*/, false, chaosMonkey,
-		dirs, br, nil, genesis, syncCfg, nil)
+		dirs, br, nil, genesis, syncCfg, nil, nil, nil)
 
 	if unwind > 0 {
 		if err := db.View(ctx, func(tx kv.Tx) error {

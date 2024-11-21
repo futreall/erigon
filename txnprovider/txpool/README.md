@@ -30,7 +30,7 @@ Now the definition of a "new pending" transaction can be figured out by thinking
 2. Is not valid currently, but can potentially be valid in the future - assigned to the pink circle
 3. Is valid currently - assigned to the light green circle
 
-Then, if the transaction is assigned into the light green circle, we need to check whether it can be included into the "pending" dark green circle. Usually, if it is more attractive (in terms of perceived mining reward) than some other transactions in the dark green circle, it can be included, and some other transactions are evicted. There might be some exceptions to that, if the pending circle is limited by total size of the transactions rather than total number of transaction. If the new transaction is quite large, and even by pushing some other, less attractive transactions, it cannot fit, it would not be included.
+Then, if the transaction is assigned into the light green circle, we need to check whether it can be included into the "pending" dark green circle. Usually, if it is more attractive (in terms of perceived fees) than some other transactions in the dark green circle, it can be included, and some other transactions are evicted. There might be some exceptions to that, if the pending circle is limited by total size of the transactions rather than total number of transaction. If the new transaction is quite large, and even by pushing some other, less attractive transactions, it cannot fit, it would not be included.
 
 At the end, if the new transaction is included into the dark green "pending" circle, a notification needs to be sent.
 
@@ -49,9 +49,9 @@ We can express this as a function
 => pending_pool, queued_pool
 ```
 
-## Select transaction for mining
+## Select transaction for block building
 
-Before a new block gets mined, local and "remote" pending transactions are queried from the transaction pool. Local transactions (injected by JSON RPC methods into the node) get priority over "remote" transactions. If there are no local transactions left and there is still "space" left in the block, "remote" transactions are selected from the pending pool, in order of their priority, which is usually defined by much Wei/eth miner would receive for each unit of gas by including that transaction.
+Before a new block gets built, local and "remote" pending transactions are queried from the transaction pool. Local transactions (injected by JSON RPC methods into the node) get priority over "remote" transactions. If there are no local transactions left and there is still "space" left in the block, "remote" transactions are selected from the pending pool, in order of their priority, which is usually defined by much Wei/eth miner would receive for each unit of gas by including that transaction.
 
 Note that although in the current implementation, ALL pending transactions are first retrieved, then sorted by priority, and then selected one-by-one, this is not a functional requirement. A different implementation that selects pending transactions in the order of priority, without fully sorting them, would be suitable as well.
 
@@ -164,7 +164,7 @@ senders :: senderId => { state_balance; state_nonce; nonce =>(sorted) transactio
 
 Here, `transaction_record` is a pointer to a piece of data that represent a transaction in one of the sub-pools.
 Data structure `senders` allows us to react on the following events and modify the ephemeral field `SubPool` inside `transaction_record`:
-1. New best block arrives, which potentially changes the balance and the nonce of some senders. We use `senderIds` data structure to find relevant `senderId` values, and then use `senders` data structure to modify `state_balance` and `state_nonce`, potentially remove some elements (if transaction with some nonce is included into a block), and finally, walk over the transaction records and update `SubPool` fields depending on the actual presence of nonce gaps and what the balance is.
+1. New block becomes the tip of the chain, which potentially changes the balance and the nonce of some senders. We use `senderIds` data structure to find relevant `senderId` values, and then use `senders` data structure to modify `state_balance` and `state_nonce`, potentially remove some elements (if transaction with some nonce is included into a block), and finally, walk over the transaction records and update `SubPool` fields depending on the actual presence of nonce gaps and what the balance is.
 2. New transaction arrives, and it may potentially replace existing one, shifting the balances required in all subsequent transactions from the same sender. Also, newly arrived transaction may fill the nonce gap. In both of these cases, we walk over the transaction records and update `SubPool` fields.
 3. Transaction is discarded. As it will be mentioned later, the ordering function is designed in such a way that transaction with a nonce `N` can only be discarded from the sub pools if all transactions with nonces higher than `N` have been discarded. Therefore, the only reaction on discarding a transaction is the deletion of corresponding entry from the mapping `nonce => transaction_record`.
 

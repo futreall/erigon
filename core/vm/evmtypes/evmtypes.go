@@ -176,4 +176,5 @@ type IntraBlockState interface {
 	Snapshot() int
 
 	AddLog(*types.Log)
+	TracingHooks(hooks *tracing.Hooks)
 }

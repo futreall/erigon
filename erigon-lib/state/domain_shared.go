@@ -1109,6 +1109,8 @@ type SharedDomainsCommitmentContext struct {
 	patriciaTrie  commitment.Trie
 	justRestored  atomic.Bool
 
+	traverser *commitment.HexPatriciaReader
+
 	limitReadAsOfTxNum uint64
 }
 
@@ -1126,6 +1128,11 @@ func NewSharedDomainsCommitmentContext(sd *SharedDomains, mode commitment.Mode, 
 
 	ctx.patriciaTrie, ctx.updates = commitment.InitializeTrieAndUpdates(trieVariant, mode, sd.aggTx.a.tmpdir)
 	ctx.patriciaTrie.ResetContext(ctx)
+	t, err := commitment.NewPatriciaReader(ctx, length.Addr, nil)
+	if err != nil {
+		panic(err)
+	}
+	ctx.traverser = t
 	return ctx
 }
 
@@ -1263,6 +1270,9 @@ func (sdc *SharedDomainsCommitmentContext) Storage(plainKey []byte) (u *commitme
 func (sdc *SharedDomainsCommitmentContext) Reset() {
 	if !sdc.justRestored.Load() {
 		sdc.patriciaTrie.Reset()
+		if sdc.traverser != nil {
+			sdc.traverser.Reset()
+		}
 	}
 }
 
@@ -1281,6 +1291,8 @@ func (sdc *SharedDomainsCommitmentContext) TouchKey(d kv.Domain, key string, val
 		return
 	}
 	ks := []byte(key)
+	sdc.traverser.Traverse(ks)
+
 	switch d {
 	case kv.AccountsDomain:
 		sdc.updates.TouchPlainKey(ks, val, sdc.updates.TouchAccount)
@@ -1360,6 +1372,9 @@ func (sdc *SharedDomainsCommitmentContext) storeCommitmentState(blockNum uint64,
 		fmt.Printf("[commitment] store txn %d block %d rootHash %x\n", sdc.sharedDomains.txNum, blockNum, rootHash)
 	}
 	sdc.sharedDomains.put(kv.CommitmentDomain, string(keyCommitmentState), encodedState)
+	if sdc.traverser != nil {
+		sdc.traverser.SetState(encodedState)
+	}
 	return sdc.sharedDomains.domainWriters[kv.CommitmentDomain].PutWithPrev(keyCommitmentState, nil, encodedState, prevState, prevStep)
 }
 
@@ -1425,6 +1440,9 @@ func (sdc *SharedDomainsCommitmentContext) SeekCommitment(tx kv.Tx, cd *DomainRo
 		return 0, 0, false, err
 	}
 	blockNum, txNum, err = sdc.restorePatriciaState(state)
+	if sdc.traverser != nil {
+		sdc.traverser.SetState(state)
+	}
 	return blockNum, txNum, true, err
 }
 

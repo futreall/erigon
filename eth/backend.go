@@ -764,7 +764,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					&vm.Config{},
 					backend.notifications,
 					config.StateStream,
-					/*stateStream=*/ false,
+					false, //blockHalt
 					dirs,
 					blockReader,
 					backend.sentriesClient.Hd,

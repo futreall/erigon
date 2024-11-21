@@ -52,8 +52,8 @@ func (api *BaseAPI) getReceipts(ctx context.Context, tx kv.Tx, block *types.Bloc
 	return api.receiptsGenerator.GetReceipts(ctx, chainConfig, tx, block)
 }
 
-func (api *BaseAPI) getReceipt(ctx context.Context, cc *chain.Config, tx kv.Tx, block *types.Block, index int, optimize bool) (*types.Receipt, error) {
-	return api.receiptsGenerator.GetReceipt(ctx, cc, tx, block, index, optimize)
+func (api *BaseAPI) getReceipt(ctx context.Context, cc *chain.Config, tx kv.TemporalTx, block *types.Block, txNum uint64, index int) (*types.Receipt, error) {
+	return api.receiptsGenerator.GetReceipt(ctx, cc, tx, block, txNum, index)
 }
 
 func (api *BaseAPI) getCachedReceipts(ctx context.Context, hash common.Hash) (types.Receipts, bool) {
@@ -477,7 +477,13 @@ func (api *APIImpl) GetTransactionReceipt(ctx context.Context, txnHash common.Ha
 		return ethutils.MarshalReceipt(borReceipt, bortypes.NewBorTransaction(), chainConfig, block.HeaderNoCopy(), txnHash, false), nil
 	}
 
-	receipt, err := api.getReceipt(ctx, chainConfig, tx, block, int(txnIndex), false)
+	txNum, err := rawdbv3.TxNums.Min(tx, blockNum)
+	if err != nil {
+		return nil, err
+	}
+	txNum += txnIndex
+
+	receipt, err := api.getReceipt(ctx, chainConfig, tx.(kv.TemporalTx), block, txNum, int(txnIndex))
 	if err != nil {
 		return nil, fmt.Errorf("getReceipt error: %w", err)
 	}

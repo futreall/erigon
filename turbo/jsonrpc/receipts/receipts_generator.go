@@ -3,6 +3,7 @@ package receipts
 import (
 	"context"
 	"fmt"
+	"github.com/erigontech/erigon/core/rawdb/rawtemporaldb"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 
@@ -87,34 +88,27 @@ func (g *Generator) PrepareEnv(ctx context.Context, block *types.Block, cfg *cha
 	}, nil
 }
 
-func (g *Generator) GetReceipt(ctx context.Context, cfg *chain.Config, tx kv.Tx, block *types.Block, index int, optimize bool) (*types.Receipt, error) {
+func (g *Generator) GetReceipt(ctx context.Context, cfg *chain.Config, tx kv.TemporalTx, block *types.Block, txNum uint64, index int) (*types.Receipt, error) {
 	var receipt *types.Receipt
-	if optimize {
-		genEnv, err := g.PrepareEnv(ctx, block, cfg, tx, index)
-		if err != nil {
-			return nil, err
-		}
-		receipt, _, err = core.ApplyTransaction(cfg, core.GetHashFn(genEnv.header, genEnv.getHeader), g.engine, nil, genEnv.gp, genEnv.ibs, genEnv.noopWriter, genEnv.header, block.Transactions()[index], genEnv.usedGas, genEnv.usedBlobGas, vm.Config{})
-		if err != nil {
-			return nil, fmt.Errorf("ReceiptGen.GetReceipt: bn=%d, txnIdx=%d, %w", block.NumberU64(), index, err)
-		}
-		receipt.BlockHash = block.Hash()
-	} else {
-		genEnv, err := g.PrepareEnv(ctx, block, cfg, tx, 0)
-		if err != nil {
-			return nil, err
-		}
-		for i, txn := range block.Transactions() {
-			genEnv.ibs.SetTxContext(i)
-			receipt, _, err = core.ApplyTransaction(cfg, core.GetHashFn(genEnv.header, genEnv.getHeader), g.engine, nil, genEnv.gp, genEnv.ibs, genEnv.noopWriter, genEnv.header, txn, genEnv.usedGas, genEnv.usedBlobGas, vm.Config{})
-			if err != nil {
-				return nil, fmt.Errorf("ReceiptGen.GetReceipt: bn=%d, txnIdx=%d, %w", block.NumberU64(), i, err)
-			}
-			receipt.BlockHash = block.Hash()
-			if i == index {
-				break
-			}
-		}
+	genEnv, err := g.PrepareEnv(ctx, block, cfg, tx, index)
+	if err != nil {
+		return nil, err
+	}
+	receipt, _, err = core.ApplyTransaction(cfg, core.GetHashFn(genEnv.header, genEnv.getHeader), g.engine, nil, genEnv.gp, genEnv.ibs, genEnv.noopWriter, genEnv.header, block.Transactions()[index], genEnv.usedGas, genEnv.usedBlobGas, vm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("ReceiptGen.GetReceipt: bn=%d, txnIdx=%d, %w", block.NumberU64(), index, err)
+	}
+
+	cumGasUsed, _, firstLogInd, err := rawtemporaldb.ReceiptAsOf(tx, txNum)
+
+	receipt.BlockHash = block.Hash()
+	receipt.TransactionIndex = uint(index)
+	receipt.CumulativeGasUsed = cumGasUsed
+
+	for i := range receipt.Logs {
+		receipt.Logs[i].TxIndex = uint(index)
+		receipt.Logs[i].Index = uint(firstLogInd)
+		firstLogInd++
 	}
 
 	return receipt, nil

@@ -671,38 +671,33 @@ echo 1 > /proc/sys/vm/compact_memory
 
 Windows users may run erigon in 3 possible ways:
 
-* Build executable binaries natively for Windows using provided `wmake.ps1` PowerShell script. Usage syntax is the same
-  as `make` command so you have to run `.\wmake.ps1 [-target] <targetname>`. Example: `.\wmake.ps1 erigon` builds erigon
-  executable. All binaries are placed in `.\build\bin\` subfolder. There are some requirements for a successful native
-  build on windows :
-    * [Git](https://git-scm.com/downloads) for Windows must be installed. If you're cloning this repository is very
-      likely you already have it
-    * [GO Programming Language](https://golang.org/dl/) must be installed. Minimum required version is 1.22
-    * GNU CC Compiler at least version 13 (is highly suggested that you install `chocolatey` package manager - see
-      following point)
-    * If you need to build MDBX tools (i.e. `.\wmake.ps1 db-tools`)
-      then [Chocolatey package manager](https://chocolatey.org/) for Windows must be installed. By Chocolatey you need
-      to install the following components : `cmake`, `make`, `mingw` by `choco install cmake make mingw`. Make sure
-      Windows System "Path" variable has:
-      C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin
+- Build executable binaries natively on Windows.
+    - Dependencies:
+        - `choco upgrade mingw -y --version 13.2.0`
+        - `choco install cmake -y --version 3.27.8`
+        - `choco install git`
+        - `choco install golang`
+        - Make sure Windows System "Path" variable has: C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin
+    - Build binaries using provided `wmake.ps1` usage syntax is the same as `make` command:
+      `.\wmake.ps1 [-target] <targetname>`. Example: `.\wmake.ps1 erigon` builds erigon. All binaries are
+      placed in `.\build\bin\` subfolder.
+    - **Important note about Anti-Viruses**
+      MinGW's compiler detection phase some temporary executables are generated to test compiler capabilities.
+      It's been reported some anti-virus programs detect those files as possibly infected by `Win64/Kryptic.CIS` trojan
+      horse (or a variant of it). Although those are false positives we have no control over 100+ vendors of security
+      products for Windows and their respective detection algorithms and we understand this might make your experience
+      with Windows builds uncomfortable. To workaround the issue you might either set exclusions for your antivirus
+      specifically for `build\bin\mdbx\CMakeFiles` sub-folder of the cloned repo or you can run erigon using the
+      following other two options
 
-  **Important note about Anti-Viruses**
-  During MinGW's compiler detection phase some temporary executables are generated to test compiler capabilities. It's
-  been reported some anti-virus programs detect those files as possibly infected by `Win64/Kryptic.CIS` trojan horse (or
-  a variant of it). Although those are false positives we have no control over 100+ vendors of security products for
-  Windows and their respective detection algorithms and we understand this might make your experience with Windows
-  builds uncomfortable. To workaround the issue you might either set exclusions for your antivirus specifically
-  for `build\bin\mdbx\CMakeFiles` sub-folder of the cloned repo or you can run erigon using the following other two
-  options
+- Use Docker: see [docker-compose.yml](./docker-compose.yml)
 
-* Use Docker :  see [docker-compose.yml](./docker-compose.yml)
-
-* Use WSL (Windows Subsystem for Linux) **strictly on version 2**. Under this option you can build Erigon just as you
+- Use WSL (Windows Subsystem for Linux) **strictly on version 2**. Under this option you can build Erigon just as you
   would on a regular Linux distribution. You can point your data also to any of the mounted Windows partitions (
   eg. `/mnt/c/[...]`, `/mnt/d/[...]` etc) but in such case be advised performance is impacted: this is due to the fact
   those mount points use `DrvFS` which is
-  a [network file system](https://github.com/erigontech/erigon?tab=readme-ov-file#cloud-network-drives)
-  and, additionally, MDBX locks the db for exclusive access which implies only one process at a time can access data.
+  a [network file system](https://github.com/erigontech/erigon?tab=readme-ov-file#cloud-network-drives) and,
+  additionally, MDBX locks the db for exclusive access which implies only one process at a time can access data.
   This has consequences on the running of `rpcdaemon` which has to be configured as [Remote DB](#for-remote-db) even if
   it is executed on the very same computer. If instead your data is hosted on the native Linux filesystem non
   limitations apply.

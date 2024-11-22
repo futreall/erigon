@@ -140,6 +140,10 @@ func NewSharedDomains(tx kv.Tx, logger log.Logger) (*SharedDomains, error) {
 	return sd, nil
 }
 
+func (sd *SharedDomains) KeysTouched() uint64 {
+	return sd.sdCtx.updates.Size()
+}
+
 func (sd *SharedDomains) SetChangesetAccumulator(acc *StateChangeSet) {
 	sd.currentChangesAccumulator = acc
 	for idx := range sd.domainWriters {

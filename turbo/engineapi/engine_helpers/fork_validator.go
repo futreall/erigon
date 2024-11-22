@@ -351,6 +351,10 @@ func (fv *ForkValidator) validateAndStorePayload(txc wrap.TxContainer, header *t
 	return
 }
 
+func (fv *ForkValidator) GetKeysCount() uint64 {
+	return fv.sharedDom.KeysTouched()
+}
+
 // GetTimings returns the timings of the last block validation.
 func (fv *ForkValidator) GetTimings(hash libcommon.Hash) BlockTimings {
 	fv.lock.Lock()

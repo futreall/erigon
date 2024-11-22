@@ -439,31 +439,18 @@ func GnosisGenesisBlock() *types.Genesis {
 	return &types.Genesis{
 		Config:     params.GnosisChainConfig,
 		Timestamp:  0,
-		AuRaSeal:   common.FromHex("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+		AuRaSeal:   types.NewAuraSeal(0, common.FromHex("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")),
 		GasLimit:   0x989680,
 		Difficulty: big.NewInt(0x20000),
 		Alloc:      readPrealloc("allocs/gnosis.json"),
 	}
 }
 
-func GnoPectraDevnet1GenesisBlock() *types.Genesis {
-	return &types.Genesis{
-		Config:     params.GnoPectraDevnet1Config,
-		AuRaSeal:   common.FromHex("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-		AuRaStep: 0,
-		GasLimit:   0x989680,
-		Difficulty: big.NewInt(0x1),
-		BaseFee:    big.NewInt(0x3b9aca00),
-		Alloc:      readPrealloc("allocs/gno_pectra_1.json"),
-	}
-}
-
-
 func ChiadoGenesisBlock() *types.Genesis {
 	return &types.Genesis{
 		Config:     params.ChiadoChainConfig,
 		Timestamp:  0,
-		AuRaSeal:   common.FromHex("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+		AuRaSeal:   types.NewAuraSeal(0, common.FromHex("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")),
 		GasLimit:   0x989680,
 		Difficulty: big.NewInt(0x20000),
 		Alloc:      readPrealloc("allocs/chiado.json"),
@@ -519,9 +506,11 @@ func GenesisToBlock(g *types.Genesis, tmpDir string, logger log.Logger) (*types.
 		BaseFee:       g.BaseFee,
 		BlobGasUsed:   g.BlobGasUsed,
 		ExcessBlobGas: g.ExcessBlobGas,
-		AuRaStep:      g.AuRaStep,
-		AuRaSeal:      g.AuRaSeal,
 		RequestsHash:  g.RequestsHash,
+	}
+	if g.AuRaSeal != nil && len(g.AuRaSeal.AuthorityRound.Signature) > 0 {
+		head.AuRaSeal = g.AuRaSeal.AuthorityRound.Signature
+		head.AuRaStep = uint64(g.AuRaSeal.AuthorityRound.Step)
 	}
 	if g.GasLimit == 0 {
 		head.GasLimit = params.GenesisGasLimit
@@ -698,8 +687,6 @@ func GenesisBlockByChainName(chain string) *types.Genesis {
 		return GnosisGenesisBlock()
 	case networkname.ChiadoChainName:
 		return ChiadoGenesisBlock()
-	case networkname.GnoPectraDevnet1ChainName:
-		return GnoPectraDevnet1GenesisBlock()
 	default:
 		return nil
 	}

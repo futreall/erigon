@@ -692,8 +692,7 @@ Windows users may run erigon in 3 possible ways:
 
 - Use Docker: see [docker-compose.yml](./docker-compose.yml)
 
-- Use WSL (Windows Subsystem for Linux) **strictly on version 2**. Under this option you can build Erigon just as you
-  would on a regular Linux distribution. You can point your data also to any of the mounted Windows partitions (
+- Use WSL2 (Windows Subsystem for Linux). Can point your data to any of the mounted Windows partitions (
   eg. `/mnt/c/[...]`, `/mnt/d/[...]` etc) but in such case be advised performance is impacted: this is due to the fact
   those mount points use `DrvFS` which is
   a [network file system](https://github.com/erigontech/erigon?tab=readme-ov-file#cloud-network-drives) and,

@@ -224,7 +224,7 @@ func (be *BranchEncoder) CollectUpdate(
 	readCell func(nibble int, skip bool) (*cell, error),
 ) (lastNibble int, err error) {
 
-	update, lastNibble, err := be.EncodeBranch(bitmap, touchMap, afterMap, readCell)
+	update, lastNibble, err := be.EncodeBranch(afterMap, touchMap, afterMap, readCell)
 	if err != nil {
 		return 0, err
 	}
@@ -236,10 +236,10 @@ func (be *BranchEncoder) CollectUpdate(
 		if bytes.Equal(prev, update) {
 			return lastNibble, nil // do not write the same data for prefix
 		}
-		update, err = be.merger.Merge(prev, update)
-		if err != nil {
-			return 0, err
-		}
+		// update, err = be.merger.Merge(prev, update)
+		// if err != nil {
+		// 	return 0, err
+		// }
 	}
 	mxTrieBranchesUpdated.Inc()
 	ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep)

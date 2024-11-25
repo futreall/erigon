@@ -1311,17 +1311,8 @@ func (sdc *SharedDomainsCommitmentContext) ComputeCommitment(ctx context.Context
 		sdc.updates.Reset()
 		return nil, nil
 	}
-	if sdc.delayedFlush {
-		if err := sdc.DelayedFlush(); err != nil {
-			return nil, err
-		}
-	}
-	sdc.ResetBranchCache()
-	defer sdc.ResetBranchCache()
-
-	mxCommitmentRunning.Inc()
-	defer mxCommitmentRunning.Dec()
-	defer func(s time.Time) { mxCommitmentTook.ObserveDuration(s) }(time.Now())
+	// sdc.ResetBranchCache()
+	// defer sdc.ResetBranchCache()
 
 	updateCount := sdc.updates.Size()
 	if sdc.sharedDomains.trace {
@@ -1331,6 +1322,10 @@ func (sdc *SharedDomainsCommitmentContext) ComputeCommitment(ctx context.Context
 		rootHash, err = sdc.patriciaTrie.RootHash()
 		return rootHash, err
 	}
+
+	mxCommitmentRunning.Inc()
+	defer mxCommitmentRunning.Dec()
+	defer func(s time.Time) { mxCommitmentTook.ObserveDuration(s) }(time.Now())
 
 	// data accessing functions should be set when domain is opened/shared context updated
 	sdc.patriciaTrie.SetTrace(sdc.sharedDomains.trace)
@@ -1437,6 +1432,7 @@ func (sdc *SharedDomainsCommitmentContext) LatestCommitmentState() (blockNum, tx
 // SeekCommitment [sinceTx, untilTx] searches for last encoded state from DomainCommitted
 // and if state found, sets it up to current domain
 func (sdc *SharedDomainsCommitmentContext) SeekCommitment(tx kv.Tx, cd *DomainRoTx, sinceTx, untilTx uint64) (blockNum, txNum uint64, ok bool, err error) {
+	sdc.ResetBranchCache()
 	_, _, state, err := sdc.LatestCommitmentState()
 	if err != nil {
 		return 0, 0, false, err

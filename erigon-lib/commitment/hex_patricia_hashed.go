@@ -1607,14 +1607,14 @@ func (hph *HexPatriciaHashed) Process(ctx context.Context, updates *Updates, log
 	if hph.trace {
 		fmt.Printf("root hash %x updates %d\n", rootHash, updatesCount)
 	}
-	if hph.delayedFlush {
-		return rootHash, nil
-	}
+	// if hph.delayedFlush {
+	// 	return rootHash, nil
+	// }
 
-	err = hph.branchEncoder.Load(hph.ctx, etl.TransformArgs{Quit: ctx.Done()})
-	if err != nil {
-		return nil, fmt.Errorf("branch update failed: %w", err)
-	}
+	// err = hph.branchEncoder.Load(hph.ctx, etl.TransformArgs{Quit: ctx.Done()})
+	// if err != nil {
+	// 	return nil, fmt.Errorf("branch update failed: %w", err)
+	// }
 	if dbg.KVReadLevelledMetrics {
 		log.Debug("commitment finished, counters updated (no reset)",
 			//"hadToLoad", common.PrettyCounter(hadToLoad.Load()), "skippedLoad", common.PrettyCounter(skippedLoad.Load()),

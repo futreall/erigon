@@ -186,7 +186,7 @@ func NewBranchEncoder(sz uint64, tmpdir string) *BranchEncoder {
 		tmpdir: tmpdir,
 		merger: NewHexBranchMerger(sz / 2),
 	}
-	be.initCollector()
+	// be.initCollector()
 	return be
 }
 
@@ -201,34 +201,19 @@ func (be *BranchEncoder) initCollector() {
 
 func (be *BranchEncoder) Load(ctx PatriciaContext, args etl.TransformArgs) error {
 	// do not collect them at least now. Write them at CollectUpdate into pc
-	if be.updates == nil {
-		return nil
-	}
+	// if be.updates == nil {
+	// 	return nil
+	// }
 
-	if err := be.updates.Load(nil, "", func(prefix, update []byte, table etl.CurrentTableReader, next etl.LoadNextFunc) error {
-		// since history is disabled
-		prev, prevStep, err := ctx.Branch(prefix)
-		if err != nil {
-			return err
-		}
-		if len(prev) > 0 {
-			if bytes.Equal(prev, update) {
-				//fmt.Printf("skip collectBranchUpdate [%x]\n", prefix)
-				return nil // do not write the same data for prefix
-			}
-			update, err = be.merger.Merge(prev, update)
-			if err != nil {
-				return err
-			}
-		}
-		mxTrieBranchesUpdated.Inc()
-		//fmt.Printf("\ncollectBranchUpdate [%x] -> %s\n", prefix, BranchData(update).String())
-		// has to copy :(
-		return ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep)
-	}, args); err != nil {
-		return err
-	}
-	be.initCollector()
+	// if err := be.updates.Load(nil, "", func(prefix, update []byte, table etl.CurrentTableReader, next etl.LoadNextFunc) error {
+	// 	// since history is disabled
+	// 	//fmt.Printf("\ncollectBranchUpdate [%x] -> %s\n", prefix, BranchData(update).String())
+	// 	// has to copy :(
+	// 	return ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep)
+	// }, args); err != nil {
+	// 	return err
+	// }
+	// be.initCollector()
 	return nil
 }
 
@@ -243,10 +228,22 @@ func (be *BranchEncoder) CollectUpdate(
 	if err != nil {
 		return 0, err
 	}
-	if err = be.updates.Collect(prefix, update); err != nil {
-		// if err = be.updates.Collect(common.Copy(prefix), common.Copy(update)); err != nil {
+	prev, prevStep, err := ctx.Branch(prefix)
+	if err != nil {
 		return 0, err
 	}
+	if len(prev) > 0 {
+		if bytes.Equal(prev, update) {
+			return lastNibble, nil // do not write the same data for prefix
+		}
+		update, err = be.merger.Merge(prev, update)
+		if err != nil {
+			return 0, err
+		}
+	}
+	mxTrieBranchesUpdated.Inc()
+	ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep)
+
 	return lastNibble, nil
 }
 

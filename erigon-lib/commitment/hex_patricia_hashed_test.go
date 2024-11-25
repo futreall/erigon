@@ -1300,8 +1300,8 @@ func Test_HexPatriciaHashed_ProcessWithDozensOfStorageKeys(t *testing.T) {
 
 	trieTwo := NewHexPatriciaHashed(length.Addr, msTwo, msTwo.TempDir())
 
-	trieOne.SetTrace(true)
-	trieTwo.SetTrace(true)
+	// trieOne.SetTrace(true)
+	// trieTwo.SetTrace(true)
 
 	var rSeq, rBatch []byte
 	{

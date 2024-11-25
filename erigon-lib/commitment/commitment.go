@@ -31,7 +31,6 @@ import (
 	"github.com/google/btree"
 	"golang.org/x/crypto/sha3"
 
-	"github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/cryptozerocopy"
 	"github.com/erigontech/erigon-lib/log/v3"
 	"github.com/erigontech/erigon-lib/metrics"
@@ -242,7 +241,8 @@ func (be *BranchEncoder) CollectUpdate(
 		// }
 	}
 	mxTrieBranchesUpdated.Inc()
-	ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep)
+	// ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep)
+	ctx.PutBranch(prefix, update, prev, prevStep)
 
 	return lastNibble, nil
 }

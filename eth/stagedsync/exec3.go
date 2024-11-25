@@ -812,26 +812,38 @@ func flushAndCheckCommitmentV3(ctx context.Context, header *types.Header, applyT
 	if doms.BlockNum() != header.Number.Uint64() {
 		panic(fmt.Errorf("%d != %d", doms.BlockNum(), header.Number.Uint64()))
 	}
-
-	rh, err := doms.ComputeCommitment(ctx, true, header.Number.Uint64(), e.LogPrefix())
-	if err != nil {
-		return false, fmt.Errorf("StateV3.Apply: %w", err)
-	}
-	if cfg.blockProduction {
-		header.Root = common.BytesToHash(rh)
-		return true, nil
-	}
-	if bytes.Equal(rh, header.Root.Bytes()) {
-		if !inMemExec {
-			if err := doms.Flush(ctx, applyTx); err != nil {
-				return false, err
-			}
-			if err = applyTx.(state2.HasAggTx).AggTx().(*state2.AggregatorRoTx).PruneCommitHistory(ctx, applyTx, nil); err != nil {
-				return false, err
-			}
+	var rh []byte
+	var err error
+	if !cfg.blockProduction && !inMemExec {
+		ok, err := doms.CheckCommitmentAgainst(ctx, false, header.Number.Uint64(), e.LogPrefix(), header.Root.Bytes())
+		if err != nil {
+			return false, fmt.Errorf("StateV3.Apply: %w", err)
 		}
-		return true, nil
+		if ok {
+			return true, nil
+		}
+	} else {
+		rh, err = doms.ComputeCommitment(ctx, true, header.Number.Uint64(), e.LogPrefix())
+		if err != nil {
+			return false, fmt.Errorf("StateV3.Apply: %w", err)
+		}
+		if cfg.blockProduction {
+			header.Root = common.BytesToHash(rh)
+			return true, nil
+		}
+		if bytes.Equal(rh, header.Root.Bytes()) {
+			if !inMemExec {
+				if err := doms.Flush(ctx, applyTx); err != nil {
+					return false, err
+				}
+				if err = applyTx.(state2.HasAggTx).AggTx().(*state2.AggregatorRoTx).PruneCommitHistory(ctx, applyTx, nil); err != nil {
+					return false, err
+				}
+			}
+			return true, nil
+		}
 	}
+
 	logger.Error(fmt.Sprintf("[%s] Wrong trie root of block %d: %x, expected (from header): %x. Block hash: %x", e.LogPrefix(), header.Number.Uint64(), rh, header.Root.Bytes(), header.Hash()))
 	if cfg.badBlockHalt {
 		return false, errors.New("wrong trie root")

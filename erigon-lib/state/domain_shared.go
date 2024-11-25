@@ -733,6 +733,11 @@ func (sd *SharedDomains) SetTrace(b bool) {
 	sd.trace = b
 }
 
+func (sd *SharedDomains) CheckCommitmentAgainst(ctx context.Context, saveStateAfter bool, blockNum uint64, logPrefix string, targetRoot []byte) (ok bool, err error) {
+	ok, err = sd.sdCtx.ComputeCommitment2(ctx, saveStateAfter, blockNum, logPrefix, targetRoot)
+	return
+}
+
 func (sd *SharedDomains) ComputeCommitment(ctx context.Context, saveStateAfter bool, blockNum uint64, logPrefix string) (rootHash []byte, err error) {
 	rootHash, err = sd.sdCtx.ComputeCommitment(ctx, saveStateAfter, blockNum, logPrefix)
 	return
@@ -1270,6 +1275,52 @@ func (sdc *SharedDomainsCommitmentContext) TouchKey(d kv.Domain, key string, val
 	default:
 		panic(fmt.Errorf("TouchKey: unknown domain %s", d))
 	}
+}
+
+func (sdc *SharedDomainsCommitmentContext) ComputeCommitment2(ctx context.Context, saveState bool, blockNum uint64, logPrefix string, targetRoot []byte) (ok bool, err error) {
+	if dbg.DiscardCommitment() {
+		sdc.updates.Reset()
+		return false, nil
+	}
+	// sdc.ResetBranchCache()
+	// defer sdc.ResetBranchCache()
+
+	updateCount := sdc.updates.Size()
+	if sdc.sharedDomains.trace {
+		defer sdc.sharedDomains.logger.Trace("ComputeCommitment", "block", blockNum, "keys", updateCount, "mode", sdc.updates.Mode())
+	}
+	if updateCount == 0 {
+		rootHash, err := sdc.patriciaTrie.RootHash()
+		if bytes.Equal(rootHash, targetRoot) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	mxCommitmentRunning.Inc()
+	defer mxCommitmentRunning.Dec()
+	defer func(s time.Time) { mxCommitmentTook.ObserveDuration(s) }(time.Now())
+
+	// data accessing functions should be set when domain is opened/shared context updated
+	sdc.patriciaTrie.SetTrace(sdc.sharedDomains.trace)
+	sdc.Reset()
+
+	ok, rh, err := sdc.patriciaTrie.(*commitment.HexPatriciaHashed).CheckCommitmentAgainst(ctx, sdc.updates, logPrefix, targetRoot)
+	if err != nil {
+		return false, err
+	}
+	sdc.justRestored.Store(false)
+	if !ok {
+		return false, nil
+	}
+
+	if saveState {
+		if err := sdc.storeCommitmentState(blockNum, rh); err != nil {
+			return false, err
+		}
+	}
+
+	return ok, err
 }
 
 // Evaluates commitment for processed state.

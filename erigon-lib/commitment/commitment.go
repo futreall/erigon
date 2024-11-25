@@ -175,6 +175,7 @@ type BranchEncoder struct {
 	buf       *bytes.Buffer
 	bitmapBuf [binary.MaxVarintLen64]byte
 	merger    *BranchMerger
+	list      [][]byte
 	updates   *etl.Collector
 	tmpdir    string
 }
@@ -200,9 +201,27 @@ func (be *BranchEncoder) initCollector() {
 
 func (be *BranchEncoder) Load(ctx PatriciaContext, args etl.TransformArgs) error {
 	// do not collect them at least now. Write them at CollectUpdate into pc
-	// if be.updates == nil {
-	// 	return nil
-	// }
+	if be.list == nil {
+		return nil
+	}
+	for i := 0; i < len(be.list); i += 2 {
+		prev, prevStep, err := ctx.Branch(be.list[i])
+		if err != nil {
+			return err
+		}
+		if len(prev) > 0 {
+			if bytes.Equal(prev, be.list[i+1]) {
+				return nil // do not write the same data for prefix
+			}
+			be.list[i+1], err = be.merger.Merge(prev, be.list[i+1])
+			if err != nil {
+				return err
+			}
+		}
+		mxTrieBranchesUpdated.Inc()
+		// ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep)
+		ctx.PutBranch(be.list[i], be.list[i+1], prev, prevStep)
+	}
 
 	// if err := be.updates.Load(nil, "", func(prefix, update []byte, table etl.CurrentTableReader, next etl.LoadNextFunc) error {
 	// 	// since history is disabled
@@ -227,6 +246,13 @@ func (be *BranchEncoder) CollectUpdate(
 	if err != nil {
 		return 0, err
 	}
+	if be.list != nil {
+		be.list = append(be.list, prefix)
+		be.list = append(be.list, update)
+		mxTrieBranchesUpdated.Inc()
+		return lastNibble, nil
+	}
+
 	prev, prevStep, err := ctx.Branch(prefix)
 	if err != nil {
 		return 0, err

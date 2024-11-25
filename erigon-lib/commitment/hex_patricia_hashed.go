@@ -33,6 +33,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/erigontech/erigon-lib/etl"
 	"github.com/erigontech/erigon-lib/log/v3"
 
 	"github.com/erigontech/erigon-lib/common/dbg"
@@ -2165,4 +2166,22 @@ func (hph *HexPatriciaHashed) hashAndNibblizeKey(key []byte) []byte {
 		nibblized[i*2+1] = b & 0xf
 	}
 	return nibblized
+}
+
+func (hph *HexPatriciaHashed) CheckCommitmentAgainst(ctx context.Context, updates *Updates, logPrefix string, targetRoot []byte) (ok bool, rh []byte, err error) {
+	hph.branchEncoder.list = make([][]byte, 0)
+	rh, err = hph.Process(ctx, updates, logPrefix)
+	if err != nil {
+		hph.branchEncoder.list = nil
+		return false, rh, err
+	}
+
+	ok = bytes.Equal(rh, targetRoot)
+	if ok {
+		if err := hph.branchEncoder.Load(hph.ctx, etl.TransformArgs{Quit: ctx.Done()}); err != nil {
+			return false, rh, err
+		}
+	}
+	hph.branchEncoder.list = nil
+	return ok, rh, nil
 }

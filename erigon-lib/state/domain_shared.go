@@ -971,6 +971,7 @@ func (sd *SharedDomains) GetLatest(domain kv.Domain, k, k2 []byte) (v []byte, st
 	if err != nil {
 		return nil, 0, fmt.Errorf("storage %x read error: %w", k, err)
 	}
+	sd.put(domain, string(k), v)
 	return v, step, nil
 }
 
@@ -1105,7 +1106,6 @@ func (sd *SharedDomains) Tx() kv.Tx { return sd.roTx }
 type SharedDomainsCommitmentContext struct {
 	sharedDomains *SharedDomains
 	discard       bool // could be replaced with using ModeDisabled
-	branches      map[string]cachedBranch
 	keccak        cryptozerocopy.KeccakState
 	updates       *commitment.Updates
 	patriciaTrie  commitment.Trie
@@ -1122,7 +1122,6 @@ func NewSharedDomainsCommitmentContext(sd *SharedDomains, mode commitment.Mode, 
 	ctx := &SharedDomainsCommitmentContext{
 		sharedDomains: sd,
 		discard:       dbg.DiscardCommitment(),
-		branches:      make(map[string]cachedBranch),
 		keccak:        sha3.NewLegacyKeccak256().(cryptozerocopy.KeccakState),
 	}
 
@@ -1135,35 +1134,15 @@ func (sdc *SharedDomainsCommitmentContext) Close() {
 	sdc.updates.Close()
 }
 
-type cachedBranch struct {
-	data []byte
-	step uint64
-}
-
-// ResetBranchCache should be called after each commitment computation
-func (sdc *SharedDomainsCommitmentContext) ResetBranchCache() {
-	clear(sdc.branches)
-}
-
 func (sdc *SharedDomainsCommitmentContext) Branch(pref []byte) ([]byte, uint64, error) {
-	// cached, ok := sdc.branches[string(pref)]
-	// if ok {
-	// 	// cached value is already transformed/clean to read.
-	// 	// Cache should ResetBranchCache after each commitment computation
-	// 	return cached.data, cached.step, nil
-	// }
-
 	v, step, err := sdc.sharedDomains.LatestCommitment(pref)
+	// Trie reads prefix during unfold and after everything is ready reads it again to Merge update, so we need to cache it
 	if err != nil {
 		return nil, 0, fmt.Errorf("Branch failed: %w", err)
 	}
 	if sdc.sharedDomains.trace {
 		fmt.Printf("[SDC] Branch: %x: %x\n", pref, v)
 	}
-	// Trie reads prefix during unfold and after everything is ready reads it again to Merge update, if any, so
-	// cache branch until ResetBranchCache called
-	// sdc.branches[string(pref)] = cachedBranch{data: v, step: step}
-
 	if len(v) == 0 {
 		return nil, 0, nil
 	}
@@ -1174,9 +1153,6 @@ func (sdc *SharedDomainsCommitmentContext) PutBranch(prefix []byte, data []byte,
 	if sdc.sharedDomains.trace {
 		fmt.Printf("[SDC] PutBranch: %x: %x\n", prefix, data)
 	}
-	// sdc.branches[string(prefix)] = cachedBranch{data: data, step: prevStep}
-	// return nil
-
 	return sdc.sharedDomains.updateCommitmentData(prefix, data, prevData, prevStep)
 }
 

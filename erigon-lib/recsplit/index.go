@@ -187,6 +187,9 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 	}
 
 	idx.enums = features&Enums != No
+	if !idx.enums {
+		panic("[dbg]")
+	}
 	idx.lessFalsePositives = features&LessFalsePositives != No
 	offset++
 	if idx.enums && idx.keyCount > 0 {

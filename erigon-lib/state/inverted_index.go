@@ -583,6 +583,7 @@ func (iit *InvertedIndexRoTx) seekInFiles(key []byte, txNum uint64) (found bool,
 		}
 		accessor := iit.statelessIdxReader(i)
 		if accessor == nil {
+			log.Warn("[dbg] skip", "f", iit.files[i].src.decompressor.FileName())
 			continue
 		}
 		offset, ok := accessor.TwoLayerLookupByHash(hi, lo)

@@ -444,7 +444,6 @@ Loop:
 			start := time.Now()
 			executor.domains().SetChangesetAccumulator(nil) // Make sure we don't have an active changeset accumulator
 			// First compute and commit the progress done so far
-			executor.domains().SetDelayedCommitmentFlush(true)
 			if _, err := executor.domains().ComputeCommitment(ctx, true, blockNum, execStage.LogPrefix()); err != nil {
 				return err
 			}
@@ -808,9 +807,6 @@ func flushAndCheckCommitmentV3(ctx context.Context, header *types.Header, applyT
 
 	if dbg.DiscardCommitment() {
 		return true, nil
-	}
-	if inMemExec {
-		doms.SetDelayedCommitmentFlush(true)
 	}
 
 	if doms.BlockNum() != header.Number.Uint64() {

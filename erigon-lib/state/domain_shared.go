@@ -454,6 +454,7 @@ func (sd *SharedDomains) LatestCommitment(prefix []byte) ([]byte, uint64, error)
 	}
 
 	if !sd.aggTx.a.commitmentValuesTransform || bytes.Equal(prefix, keyCommitmentState) {
+		sd.put(kv.CommitmentDomain, string(prefix), v)
 		return v, endTx / sd.aggTx.a.StepSize(), nil
 	}
 
@@ -462,6 +463,7 @@ func (sd *SharedDomains) LatestCommitment(prefix []byte) ([]byte, uint64, error)
 	if err != nil {
 		return nil, 0, err
 	}
+	sd.put(kv.CommitmentDomain, string(prefix), rv)
 	return rv, endTx / sd.aggTx.a.StepSize(), nil
 }
 
@@ -729,10 +731,6 @@ func (sd *SharedDomains) SetBlockNum(blockNum uint64) {
 
 func (sd *SharedDomains) SetTrace(b bool) {
 	sd.trace = b
-}
-func (sd *SharedDomains) SetDelayedCommitmentFlush(b bool) {
-	sd.sdCtx.delayedFlush = b
-	sd.sdCtx.patriciaTrie.(*commitment.HexPatriciaHashed).SetDelayedFlush(b)
 }
 
 func (sd *SharedDomains) ComputeCommitment(ctx context.Context, saveStateAfter bool, blockNum uint64, logPrefix string) (rootHash []byte, err error) {
@@ -1111,7 +1109,6 @@ type SharedDomainsCommitmentContext struct {
 	keccak        cryptozerocopy.KeccakState
 	updates       *commitment.Updates
 	patriciaTrie  commitment.Trie
-	delayedFlush  bool
 	justRestored  atomic.Bool
 
 	limitReadAsOfTxNum uint64
@@ -1149,12 +1146,12 @@ func (sdc *SharedDomainsCommitmentContext) ResetBranchCache() {
 }
 
 func (sdc *SharedDomainsCommitmentContext) Branch(pref []byte) ([]byte, uint64, error) {
-	cached, ok := sdc.branches[string(pref)]
-	if ok {
-		// cached value is already transformed/clean to read.
-		// Cache should ResetBranchCache after each commitment computation
-		return cached.data, cached.step, nil
-	}
+	// cached, ok := sdc.branches[string(pref)]
+	// if ok {
+	// 	// cached value is already transformed/clean to read.
+	// 	// Cache should ResetBranchCache after each commitment computation
+	// 	return cached.data, cached.step, nil
+	// }
 
 	v, step, err := sdc.sharedDomains.LatestCommitment(pref)
 	if err != nil {
@@ -1165,7 +1162,7 @@ func (sdc *SharedDomainsCommitmentContext) Branch(pref []byte) ([]byte, uint64, 
 	}
 	// Trie reads prefix during unfold and after everything is ready reads it again to Merge update, if any, so
 	// cache branch until ResetBranchCache called
-	sdc.branches[string(pref)] = cachedBranch{data: v, step: step}
+	// sdc.branches[string(pref)] = cachedBranch{data: v, step: step}
 
 	if len(v) == 0 {
 		return nil, 0, nil
@@ -1177,7 +1174,8 @@ func (sdc *SharedDomainsCommitmentContext) PutBranch(prefix []byte, data []byte,
 	if sdc.sharedDomains.trace {
 		fmt.Printf("[SDC] PutBranch: %x: %x\n", prefix, data)
 	}
-	sdc.branches[string(prefix)] = cachedBranch{data: data, step: prevStep}
+	// sdc.branches[string(prefix)] = cachedBranch{data: data, step: prevStep}
+	// return nil
 
 	return sdc.sharedDomains.updateCommitmentData(prefix, data, prevData, prevStep)
 }
@@ -1296,13 +1294,6 @@ func (sdc *SharedDomainsCommitmentContext) TouchKey(d kv.Domain, key string, val
 	default:
 		panic(fmt.Errorf("TouchKey: unknown domain %s", d))
 	}
-}
-
-func (sdc *SharedDomainsCommitmentContext) DelayedFlush() error {
-	if !sdc.delayedFlush {
-		return nil
-	}
-	return sdc.patriciaTrie.(*commitment.HexPatriciaHashed).DelayedFlush(sdc)
 }
 
 // Evaluates commitment for processed state.
@@ -1432,7 +1423,6 @@ func (sdc *SharedDomainsCommitmentContext) LatestCommitmentState() (blockNum, tx
 // SeekCommitment [sinceTx, untilTx] searches for last encoded state from DomainCommitted
 // and if state found, sets it up to current domain
 func (sdc *SharedDomainsCommitmentContext) SeekCommitment(tx kv.Tx, cd *DomainRoTx, sinceTx, untilTx uint64) (blockNum, txNum uint64, ok bool, err error) {
-	sdc.ResetBranchCache()
 	_, _, state, err := sdc.LatestCommitmentState()
 	if err != nil {
 		return 0, 0, false, err

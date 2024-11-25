@@ -915,11 +915,6 @@ func (sd *SharedDomains) Flush(ctx context.Context, tx kv.RwTx) error {
 	if err != nil {
 		return err
 	}
-	if sd.sdCtx.delayedFlush {
-		if err = sd.sdCtx.DelayedFlush(); err != nil {
-			return err
-		}
-	}
 	if sd.trace {
 		_, f, l, _ := runtime.Caller(1)
 		fmt.Printf("[SD aggTx=%d] FLUSHING at tx %d [%x], caller %s:%d\n", sd.aggTx.id, sd.TxNum(), fh, filepath.Base(f), l)
@@ -1315,6 +1310,11 @@ func (sdc *SharedDomainsCommitmentContext) ComputeCommitment(ctx context.Context
 	if dbg.DiscardCommitment() {
 		sdc.updates.Reset()
 		return nil, nil
+	}
+	if sdc.delayedFlush {
+		if err := sdc.DelayedFlush(); err != nil {
+			return nil, err
+		}
 	}
 	sdc.ResetBranchCache()
 	defer sdc.ResetBranchCache()

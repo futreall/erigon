@@ -444,6 +444,7 @@ Loop:
 			start := time.Now()
 			executor.domains().SetChangesetAccumulator(nil) // Make sure we don't have an active changeset accumulator
 			// First compute and commit the progress done so far
+			executor.domains().SetDelayedCommitmentFlush(true)
 			if _, err := executor.domains().ComputeCommitment(ctx, true, blockNum, execStage.LogPrefix()); err != nil {
 				return err
 			}
@@ -604,13 +605,10 @@ Loop:
 			}
 		}
 
-		mxExecBlocks.Add(1)
-
 		if shouldGenerateChangesets {
 			aggTx := executor.tx().(state2.HasAggTx).AggTx().(*state2.AggregatorRoTx)
 			aggTx.RestrictSubsetFileDeletions(true)
 			start := time.Now()
-			executor.domains().SetDelayedCommitmentFlush(true)
 			if _, err := executor.domains().ComputeCommitment(ctx, true, blockNum, execStage.LogPrefix()); err != nil {
 				return err
 			}

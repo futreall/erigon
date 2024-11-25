@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	lru "github.com/hashicorp/golang-lru/v2"
+	lru "github.com/hashicorp/golang-lru/arc/v2"
 
 	"github.com/erigontech/erigon-lib/chain"
 	"github.com/erigontech/erigon-lib/common"
@@ -22,7 +22,7 @@ import (
 )
 
 type Generator struct {
-	receiptsCache *lru.Cache[common.Hash, []*types.Receipt]
+	receiptsCache *lru.ARCCache[common.Hash, types.Receipts]
 	blockReader   services.FullBlockReader
 	engine        consensus.EngineReader
 }
@@ -39,7 +39,7 @@ type ReceiptEnv struct {
 
 func NewGenerator(cacheSize int, blockReader services.FullBlockReader,
 	engine consensus.EngineReader) *Generator {
-	receiptsCache, err := lru.New[common.Hash, []*types.Receipt](cacheSize)
+	receiptsCache, err := lru.NewARC[common.Hash, types.Receipts](cacheSize)
 	if err != nil {
 		panic(err)
 	}

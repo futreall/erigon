@@ -730,6 +730,10 @@ func (sd *SharedDomains) SetBlockNum(blockNum uint64) {
 func (sd *SharedDomains) SetTrace(b bool) {
 	sd.trace = b
 }
+func (sd *SharedDomains) SetDelayedCommitmentFlush(b bool) {
+	sd.sdCtx.delayedFlush = b
+	sd.sdCtx.patriciaTrie.(*commitment.HexPatriciaHashed).SetDelayedFlush(b)
+}
 
 func (sd *SharedDomains) ComputeCommitment(ctx context.Context, saveStateAfter bool, blockNum uint64, logPrefix string) (rootHash []byte, err error) {
 	rootHash, err = sd.sdCtx.ComputeCommitment(ctx, saveStateAfter, blockNum, logPrefix)
@@ -910,6 +914,11 @@ func (sd *SharedDomains) Flush(ctx context.Context, tx kv.RwTx) error {
 	fh, err := sd.ComputeCommitment(ctx, true, sd.BlockNum(), "flush-commitment")
 	if err != nil {
 		return err
+	}
+	if sd.sdCtx.delayedFlush {
+		if err = sd.sdCtx.DelayedFlush(); err != nil {
+			return err
+		}
 	}
 	if sd.trace {
 		_, f, l, _ := runtime.Caller(1)
@@ -1107,6 +1116,7 @@ type SharedDomainsCommitmentContext struct {
 	keccak        cryptozerocopy.KeccakState
 	updates       *commitment.Updates
 	patriciaTrie  commitment.Trie
+	delayedFlush  bool
 	justRestored  atomic.Bool
 
 	limitReadAsOfTxNum uint64
@@ -1291,6 +1301,13 @@ func (sdc *SharedDomainsCommitmentContext) TouchKey(d kv.Domain, key string, val
 	default:
 		panic(fmt.Errorf("TouchKey: unknown domain %s", d))
 	}
+}
+
+func (sdc *SharedDomainsCommitmentContext) DelayedFlush() error {
+	if !sdc.delayedFlush {
+		return nil
+	}
+	return sdc.patriciaTrie.(*commitment.HexPatriciaHashed).DelayedFlush(sdc)
 }
 
 // Evaluates commitment for processed state.

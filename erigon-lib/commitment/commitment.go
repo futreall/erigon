@@ -186,7 +186,7 @@ func NewBranchEncoder(sz uint64, tmpdir string) *BranchEncoder {
 		tmpdir: tmpdir,
 		merger: NewHexBranchMerger(sz / 2),
 	}
-	//be.initCollector()
+	be.initCollector()
 	return be
 }
 
@@ -199,24 +199,32 @@ func (be *BranchEncoder) initCollector() {
 	be.updates.SortAndFlushInBackground(true)
 }
 
-func (be *BranchEncoder) Load(pc PatriciaContext, args etl.TransformArgs) error {
+func (be *BranchEncoder) Load(ctx PatriciaContext, args etl.TransformArgs) error {
 	// do not collect them at least now. Write them at CollectUpdate into pc
 	if be.updates == nil {
 		return nil
 	}
 
 	if err := be.updates.Load(nil, "", func(prefix, update []byte, table etl.CurrentTableReader, next etl.LoadNextFunc) error {
-		stateValue, stateStep, err := pc.Branch(prefix)
+		// since history is disabled
+		prev, prevStep, err := ctx.Branch(prefix)
 		if err != nil {
 			return err
 		}
-
-		cp, cu := common.Copy(prefix), common.Copy(update) // has to copy :(
-		if err = pc.PutBranch(cp, cu, stateValue, stateStep); err != nil {
-			return err
+		if len(prev) > 0 {
+			if bytes.Equal(prev, update) {
+				//fmt.Printf("skip collectBranchUpdate [%x]\n", prefix)
+				return nil // do not write the same data for prefix
+			}
+			update, err = be.merger.Merge(prev, update)
+			if err != nil {
+				return err
+			}
 		}
 		mxTrieBranchesUpdated.Inc()
-		return nil
+		//fmt.Printf("\ncollectBranchUpdate [%x] -> %s\n", prefix, BranchData(update).String())
+		// has to copy :(
+		return ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep)
 	}, args); err != nil {
 		return err
 	}
@@ -231,28 +239,12 @@ func (be *BranchEncoder) CollectUpdate(
 	readCell func(nibble int, skip bool) (*cell, error),
 ) (lastNibble int, err error) {
 
-	prev, prevStep, err := ctx.Branch(prefix)
-	if err != nil {
-		return 0, err
-	}
 	update, lastNibble, err := be.EncodeBranch(bitmap, touchMap, afterMap, readCell)
 	if err != nil {
 		return 0, err
 	}
-
-	if len(prev) > 0 {
-		if bytes.Equal(prev, update) {
-			//fmt.Printf("skip collectBranchUpdate [%x]\n", prefix)
-			return lastNibble, nil // do not write the same data for prefix
-		}
-		update, err = be.merger.Merge(prev, update)
-		if err != nil {
-			return 0, err
-		}
-	}
-	//fmt.Printf("\ncollectBranchUpdate [%x] -> %s\n", prefix, BranchData(update).String())
-	// has to copy :(
-	if err = ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep); err != nil {
+	if err = be.updates.Collect(prefix, update); err != nil {
+		// if err = be.updates.Collect(common.Copy(prefix), common.Copy(update)); err != nil {
 		return 0, err
 	}
 	return lastNibble, nil
@@ -1049,15 +1041,14 @@ func (t *Updates) TouchPlainKey(key, val []byte, fn func(c *KeyUpdate, val []byt
 		}
 	case ModeDirect:
 		if _, ok := t.keys[string(key)]; !ok {
+			t.keys[string(key)] = struct{}{}
 			if err := t.etl.Collect(t.hasher(key), key); err != nil {
 				log.Warn("failed to collect updated key", "key", key, "err", err)
 			}
-			t.keys[string(key)] = struct{}{}
 		}
 	default:
 	}
 }
-
 func (t *Updates) TouchAccount(c *KeyUpdate, val []byte) {
 	if len(val) == 0 {
 		c.update.Flags = DeleteUpdate

@@ -80,6 +80,7 @@ type HexPatriciaHashed struct {
 	rootTouched   bool
 	rootPresent   bool
 	trace         bool
+	delayedFlush  bool // do not process branch updates unless it's necessary
 	ctx           PatriciaContext
 	hashAuxBuffer [128]byte     // buffer to compute cell hash or write hash-related things
 	auxBuffer     *bytes.Buffer // auxiliary buffer used during branch updates encoding
@@ -1517,6 +1518,10 @@ func (hph *HexPatriciaHashed) RootHash() ([]byte, error) {
 	return rootHash[1:], nil // first byte is 128+hash_len=160
 }
 
+func (hph *HexPatriciaHashed) DelayedFlush(ctx PatriciaContext) error {
+	return hph.branchEncoder.Load(ctx, etl.TransformArgs{})
+}
+
 func (hph *HexPatriciaHashed) Process(ctx context.Context, updates *Updates, logPrefix string) (rootHash []byte, err error) {
 	var (
 		m      runtime.MemStats
@@ -1602,6 +1607,10 @@ func (hph *HexPatriciaHashed) Process(ctx context.Context, updates *Updates, log
 	if hph.trace {
 		fmt.Printf("root hash %x updates %d\n", rootHash, updatesCount)
 	}
+	if hph.delayedFlush {
+		return rootHash, nil
+	}
+
 	err = hph.branchEncoder.Load(hph.ctx, etl.TransformArgs{Quit: ctx.Done()})
 	if err != nil {
 		return nil, fmt.Errorf("branch update failed: %w", err)
@@ -2162,4 +2171,8 @@ func (hph *HexPatriciaHashed) hashAndNibblizeKey(key []byte) []byte {
 		nibblized[i*2+1] = b & 0xf
 	}
 	return nibblized
+}
+
+func (hph *HexPatriciaHashed) SetDelayedFlush(b bool) {
+	hph.delayedFlush = b
 }

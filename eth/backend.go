@@ -590,6 +590,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 		if err != nil {
 			return err
 		}
+
 		if progress < header.Number.Uint64() {
 			return fmt.Errorf("unsuccessful execution, progress %d < expected %d", progress, header.Number.Uint64())
 		}

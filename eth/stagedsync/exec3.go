@@ -610,6 +610,7 @@ Loop:
 			aggTx := executor.tx().(state2.HasAggTx).AggTx().(*state2.AggregatorRoTx)
 			aggTx.RestrictSubsetFileDeletions(true)
 			start := time.Now()
+			executor.domains().SetDelayedCommitmentFlush(true)
 			if _, err := executor.domains().ComputeCommitment(ctx, true, blockNum, execStage.LogPrefix()); err != nil {
 				return err
 			}
@@ -810,6 +811,10 @@ func flushAndCheckCommitmentV3(ctx context.Context, header *types.Header, applyT
 	if dbg.DiscardCommitment() {
 		return true, nil
 	}
+	if inMemExec {
+		doms.SetDelayedCommitmentFlush(true)
+	}
+
 	if doms.BlockNum() != header.Number.Uint64() {
 		panic(fmt.Errorf("%d != %d", doms.BlockNum(), header.Number.Uint64()))
 	}

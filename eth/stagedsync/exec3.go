@@ -355,6 +355,8 @@ func ExecV3(ctx context.Context,
 
 	processed := NewProgress(blockNum, commitThreshold, workerCount, true, execStage.LogPrefix(), logger)
 
+	bs := time.Since(start)
+
 	var executor executor
 
 	if parallel {
@@ -444,9 +446,9 @@ Loop:
 			start := time.Now()
 			executor.domains().SetChangesetAccumulator(nil) // Make sure we don't have an active changeset accumulator
 			// First compute and commit the progress done so far
-			if _, err := executor.domains().ComputeCommitment(ctx, true, blockNum, execStage.LogPrefix()); err != nil {
-				return err
-			}
+			// if _, err := executor.domains().ComputeCommitment(ctx, true, blockNum, execStage.LogPrefix()); err != nil {
+			// 	return err
+			// }
 			ts += time.Since(start)
 			aggTx.RestrictSubsetFileDeletions(false)
 			shouldGenerateChangesets = true // now we can generate changesets for the safety net
@@ -708,9 +710,9 @@ Loop:
 		}
 	}
 
-	//log.Info("Executed", "blocks", inputBlockNum.Load(), "txs", outputTxNum.Load(), "repeats", mxExecRepeats.GetValueUint64())
-
 	executor.wait()
+
+	execTime := time.Since(start.Add(bs))
 
 	if u != nil && !u.HasUnwindPoint() {
 		if b != nil {
@@ -722,6 +724,8 @@ Loop:
 			fmt.Printf("[dbg] mmmm... do we need action here????\n")
 		}
 	}
+	comput := time.Since(start.Add(bs).Add(execTime))
+	log.Info("Executed", "blocks", inputBlockNum.Load(), "bootstrap", bs, "runTx", execTime, "compute+flush", comput, "txs", outputTxNum.Load(), "repeats", mxExecRepeats.GetValueUint64())
 
 	//dumpPlainStateDebug(executor.tx(), executor.domains())
 
@@ -815,7 +819,7 @@ func flushAndCheckCommitmentV3(ctx context.Context, header *types.Header, applyT
 	var rh []byte
 	var err error
 	if !cfg.blockProduction && inMemExec {
-		ok, err := doms.CheckCommitmentAgainst(ctx, false, header.Number.Uint64(), e.LogPrefix(), header.Root.Bytes())
+		ok, err := doms.CheckCommitmentAgainst(ctx, true, header.Number.Uint64(), e.LogPrefix(), header.Root.Bytes())
 		if err != nil {
 			return false, fmt.Errorf("StateV3.Apply: %w", err)
 		}

@@ -2169,7 +2169,7 @@ func (hph *HexPatriciaHashed) hashAndNibblizeKey(key []byte) []byte {
 }
 
 func (hph *HexPatriciaHashed) CheckCommitmentAgainst(ctx context.Context, updates *Updates, logPrefix string, targetRoot []byte) (ok bool, rh []byte, err error) {
-	hph.branchEncoder.list = make([][]byte, 0)
+	hph.branchEncoder.list = make([][]byte, 0, updates.Size())
 	rh, err = hph.Process(ctx, updates, logPrefix)
 	if err != nil {
 		hph.branchEncoder.list = nil

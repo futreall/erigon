@@ -814,7 +814,7 @@ func flushAndCheckCommitmentV3(ctx context.Context, header *types.Header, applyT
 	}
 	var rh []byte
 	var err error
-	if !cfg.blockProduction && !inMemExec {
+	if !cfg.blockProduction && inMemExec {
 		ok, err := doms.CheckCommitmentAgainst(ctx, false, header.Number.Uint64(), e.LogPrefix(), header.Root.Bytes())
 		if err != nil {
 			return false, fmt.Errorf("StateV3.Apply: %w", err)

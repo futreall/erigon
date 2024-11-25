@@ -136,23 +136,23 @@ func (h *Header) EncodingSize() int {
 
 	encodingSize++
 	if h.Difficulty != nil {
-		encodingSize += rlp.BigIntLenExcludingHead(h.Difficulty)
+		encodingSize += rlp2.BigIntLenExcludingHead(h.Difficulty)
 	}
 	encodingSize++
 	if h.Number != nil {
-		encodingSize += rlp.BigIntLenExcludingHead(h.Number)
+		encodingSize += rlp2.BigIntLenExcludingHead(h.Number)
 	}
 	encodingSize++
-	encodingSize += rlp.IntLenExcludingHead(h.GasLimit)
+	encodingSize += rlp2.IntLenExcludingHead(h.GasLimit)
 	encodingSize++
-	encodingSize += rlp.IntLenExcludingHead(h.GasUsed)
+	encodingSize += rlp2.IntLenExcludingHead(h.GasUsed)
 	encodingSize++
-	encodingSize += rlp.IntLenExcludingHead(h.Time)
+	encodingSize += rlp2.IntLenExcludingHead(h.Time)
 	// size of Extra
 	encodingSize += rlp2.StringLen(h.Extra)
 
 	if len(h.AuRaSeal) != 0 {
-		encodingSize += 1 + rlp.IntLenExcludingHead(h.AuRaStep)
+		encodingSize += 1 + rlp2.IntLenExcludingHead(h.AuRaStep)
 		encodingSize += rlp2.ListPrefixLen(len(h.AuRaSeal)) + len(h.AuRaSeal)
 	} else {
 		encodingSize += 33 /* MixDigest */ + 9 /* BlockNonce */
@@ -160,7 +160,7 @@ func (h *Header) EncodingSize() int {
 
 	if h.BaseFee != nil {
 		encodingSize++
-		encodingSize += rlp.BigIntLenExcludingHead(h.BaseFee)
+		encodingSize += rlp2.BigIntLenExcludingHead(h.BaseFee)
 	}
 
 	if h.WithdrawalsHash != nil {
@@ -169,11 +169,11 @@ func (h *Header) EncodingSize() int {
 
 	if h.BlobGasUsed != nil {
 		encodingSize++
-		encodingSize += rlp.IntLenExcludingHead(*h.BlobGasUsed)
+		encodingSize += rlp2.IntLenExcludingHead(*h.BlobGasUsed)
 	}
 	if h.ExcessBlobGas != nil {
 		encodingSize++
-		encodingSize += rlp.IntLenExcludingHead(*h.ExcessBlobGas)
+		encodingSize += rlp2.IntLenExcludingHead(*h.ExcessBlobGas)
 	}
 
 	if h.ParentBeaconBlockRoot != nil {
@@ -253,30 +253,30 @@ func (h *Header) EncodeRLP(w io.Writer) error {
 	if _, err := w.Write(h.Bloom.Bytes()); err != nil {
 		return err
 	}
-	if err := rlp.EncodeBigInt(h.Difficulty, w, b[:]); err != nil {
+	if err := rlp2.EncodeBigInt(h.Difficulty, w, b[:]); err != nil {
 		return err
 	}
-	if err := rlp.EncodeBigInt(h.Number, w, b[:]); err != nil {
+	if err := rlp2.EncodeBigInt(h.Number, w, b[:]); err != nil {
 		return err
 	}
-	if err := rlp.EncodeInt(h.GasLimit, w, b[:]); err != nil {
+	if err := rlp2.EncodeInt(h.GasLimit, w, b[:]); err != nil {
 		return err
 	}
-	if err := rlp.EncodeInt(h.GasUsed, w, b[:]); err != nil {
+	if err := rlp2.EncodeInt(h.GasUsed, w, b[:]); err != nil {
 		return err
 	}
-	if err := rlp.EncodeInt(h.Time, w, b[:]); err != nil {
+	if err := rlp2.EncodeInt(h.Time, w, b[:]); err != nil {
 		return err
 	}
-	if err := rlp.EncodeString(h.Extra, w, b[:]); err != nil {
+	if err := rlp2.EncodeStringIO(h.Extra, w, b[:]); err != nil {
 		return err
 	}
 
 	if len(h.AuRaSeal) > 0 {
-		if err := rlp.EncodeInt(h.AuRaStep, w, b[:]); err != nil {
+		if err := rlp2.EncodeInt(h.AuRaStep, w, b[:]); err != nil {
 			return err
 		}
-		if err := rlp.EncodeString(h.AuRaSeal, w, b[:]); err != nil {
+		if err := rlp2.EncodeStringIO(h.AuRaSeal, w, b[:]); err != nil {
 			return err
 		}
 	} else {
@@ -297,7 +297,7 @@ func (h *Header) EncodeRLP(w io.Writer) error {
 	}
 
 	if h.BaseFee != nil {
-		if err := rlp.EncodeBigInt(h.BaseFee, w, b[:]); err != nil {
+		if err := rlp2.EncodeBigInt(h.BaseFee, w, b[:]); err != nil {
 			return err
 		}
 	}
@@ -313,12 +313,12 @@ func (h *Header) EncodeRLP(w io.Writer) error {
 	}
 
 	if h.BlobGasUsed != nil {
-		if err := rlp.EncodeInt(*h.BlobGasUsed, w, b[:]); err != nil {
+		if err := rlp2.EncodeInt(*h.BlobGasUsed, w, b[:]); err != nil {
 			return err
 		}
 	}
 	if h.ExcessBlobGas != nil {
-		if err := rlp.EncodeInt(*h.ExcessBlobGas, w, b[:]); err != nil {
+		if err := rlp2.EncodeInt(*h.ExcessBlobGas, w, b[:]); err != nil {
 			return err
 		}
 	}
@@ -344,7 +344,7 @@ func (h *Header) EncodeRLP(w io.Writer) error {
 	}
 
 	if h.Verkle {
-		if err := rlp.EncodeString(h.VerkleProof, w, b[:]); err != nil {
+		if err := rlp2.EncodeStringIO(h.VerkleProof, w, b[:]); err != nil {
 			return err
 		}
 
@@ -852,8 +852,8 @@ func (rb *RawBody) DecodeRLP(s *rlp.Stream) error {
 }
 
 func (bfs BodyForStorage) payloadSize() (payloadSize, unclesLen, withdrawalsLen int) {
-	baseTxnIDLen := 1 + rlp.IntLenExcludingHead(bfs.BaseTxnID.U64())
-	txCountLen := 1 + rlp.IntLenExcludingHead(uint64(bfs.TxCount))
+	baseTxnIDLen := 1 + rlp2.IntLenExcludingHead(bfs.BaseTxnID.U64())
+	txCountLen := 1 + rlp2.IntLenExcludingHead(uint64(bfs.TxCount))
 
 	payloadSize += baseTxnIDLen
 	payloadSize += txCountLen

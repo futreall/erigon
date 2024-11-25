@@ -90,7 +90,7 @@ func (a *Account) EncodingLengthForHashing() uint {
 		balanceBytes = a.Balance.ByteLen()
 	}
 
-	nonceBytes := rlp.IntLenExcludingHead(a.Nonce)
+	nonceBytes := rlp2.IntLenExcludingHead(a.Nonce)
 
 	structLength := balanceBytes + nonceBytes + 2
 
@@ -205,7 +205,7 @@ func (a *Account) EncodeForHashing(buffer []byte) {
 		balanceBytes = a.Balance.ByteLen()
 	}
 
-	nonceBytes := rlp.IntLenExcludingHead(a.Nonce)
+	nonceBytes := rlp2.IntLenExcludingHead(a.Nonce)
 
 	var structLength = uint(balanceBytes + nonceBytes + 2)
 	structLength += 66 // Two 32-byte arrays + 2 prefixes

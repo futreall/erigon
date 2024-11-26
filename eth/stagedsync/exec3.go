@@ -712,8 +712,6 @@ Loop:
 
 	executor.wait()
 
-	execTime := time.Since(start.Add(bs))
-
 	if u != nil && !u.HasUnwindPoint() {
 		if b != nil {
 			_, err := flushAndCheckCommitmentV3(ctx, b.HeaderNoCopy(), executor.tx(), executor.domains(), cfg, execStage, stageProgress, parallel, logger, u, inMemExec)
@@ -724,8 +722,7 @@ Loop:
 			fmt.Printf("[dbg] mmmm... do we need action here????\n")
 		}
 	}
-	comput := time.Since(start.Add(bs).Add(execTime))
-	log.Info("Executed", "blocks", inputBlockNum.Load(), "bootstrap", bs, "runTx", execTime, "compute+flush", comput, "txs", outputTxNum.Load(), "repeats", mxExecRepeats.GetValueUint64())
+	log.Info("Executed", "blocks", inputBlockNum.Load(), "txs", outputTxNum.Load(), "repeats", mxExecRepeats.GetValueUint64(), "spent", time.Since(start))
 
 	//dumpPlainStateDebug(executor.tx(), executor.domains())
 

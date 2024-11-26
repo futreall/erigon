@@ -209,15 +209,15 @@ func (be *BranchEncoder) Load(ctx PatriciaContext, args etl.TransformArgs) error
 		if err != nil {
 			return err
 		}
-		if len(prev) > 0 {
-			if bytes.Equal(prev, be.list[i+1]) {
-				return nil // do not write the same data for prefix
-			}
-			be.list[i+1], err = be.merger.Merge(prev, be.list[i+1])
-			if err != nil {
-				return err
-			}
+		if len(prev) > 0 && bytes.Equal(prev, be.list[i+1]) {
+			return nil // do not write the same data for prefix
 		}
+
+		// 	be.list[i+1], err = be.merger.Merge(prev, be.list[i+1])
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// }
 		mxTrieBranchesUpdated.Inc()
 		// ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep)
 		ctx.PutBranch(be.list[i], be.list[i+1], prev, prevStep)

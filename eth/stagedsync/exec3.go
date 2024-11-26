@@ -355,8 +355,6 @@ func ExecV3(ctx context.Context,
 
 	processed := NewProgress(blockNum, commitThreshold, workerCount, true, execStage.LogPrefix(), logger)
 
-	bs := time.Since(start)
-
 	var executor executor
 
 	if parallel {

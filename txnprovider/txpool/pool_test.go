@@ -55,7 +55,7 @@ func TestNonceFromAddress(t *testing.T) {
 
 	cfg := txpoolcfg.DefaultConfig
 	sendersCache := kvcache.New(kvcache.DefaultCoherentConfig)
-	pool, err := New(ch, coreDB, cfg, sendersCache, *u256.N1, nil, nil, nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
+	pool, err := New(ch, db, coreDB, cfg, sendersCache, *u256.N1, nil, nil, nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
 	assert.NoError(err)
 	require.True(pool != nil)
 	ctx := context.Background()
@@ -168,7 +168,6 @@ func TestNonceFromAddress(t *testing.T) {
 }
 
 func TestReplaceWithHigherFee(t *testing.T) {
-	t.Skip("TODO")
 	assert, require := assert.New(t), require.New(t)
 	ch := make(chan Announcements, 100)
 	coreDB, _ := temporaltest.NewTestDB(t, datadir.New(t.TempDir()))
@@ -176,7 +175,7 @@ func TestReplaceWithHigherFee(t *testing.T) {
 
 	cfg := txpoolcfg.DefaultConfig
 	sendersCache := kvcache.New(kvcache.DefaultCoherentConfig)
-	pool, err := New(ch, coreDB, cfg, sendersCache, *u256.N1, nil, nil, nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
+	pool, err := New(ch, db, coreDB, cfg, sendersCache, *u256.N1, nil, nil, nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
 	assert.NoError(err)
 	require.NotEqual(nil, pool)
 	ctx := context.Background()
@@ -194,8 +193,7 @@ func TestReplaceWithHigherFee(t *testing.T) {
 	}
 	var addr [20]byte
 	addr[0] = 1
-	v := make([]byte, EncodeSenderLengthForStorage(2, *uint256.NewInt(1 * common.Ether)))
-	EncodeSender(2, *uint256.NewInt(1 * common.Ether), v)
+	v := types2.EncodeAccountBytesV3(2, uint256.NewInt(1*common.Ether), make([]byte, 32), 1)
 	change.ChangeBatch[0].Changes = append(change.ChangeBatch[0].Changes, &remote.AccountChange{
 		Action:  remote.Action_UPSERT,
 		Address: gointerfaces.ConvertAddressToH160(addr),
@@ -287,7 +285,6 @@ func TestReplaceWithHigherFee(t *testing.T) {
 }
 
 func TestReverseNonces(t *testing.T) {
-	t.Skip("TODO")
 	assert, require := assert.New(t), require.New(t)
 	ch := make(chan Announcements, 100)
 	coreDB, _ := temporaltest.NewTestDB(t, datadir.New(t.TempDir()))
@@ -295,7 +292,7 @@ func TestReverseNonces(t *testing.T) {
 
 	cfg := txpoolcfg.DefaultConfig
 	sendersCache := kvcache.New(kvcache.DefaultCoherentConfig)
-	pool, err := New(ch, coreDB, cfg, sendersCache, *u256.N1, nil, nil, nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
+	pool, err := New(ch, db, coreDB, cfg, sendersCache, *u256.N1, nil, nil, nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
 	assert.NoError(err)
 	require.True(pool != nil)
 	ctx := context.Background()
@@ -313,8 +310,7 @@ func TestReverseNonces(t *testing.T) {
 	}
 	var addr [20]byte
 	addr[0] = 1
-	v := make([]byte, EncodeSenderLengthForStorage(2, *uint256.NewInt(1 * common.Ether)))
-	EncodeSender(2, *uint256.NewInt(1 * common.Ether), v)
+	v := types2.EncodeAccountBytesV3(2, uint256.NewInt(1*common.Ether), make([]byte, 32), 1)
 	change.ChangeBatch[0].Changes = append(change.ChangeBatch[0].Changes, &remote.AccountChange{
 		Action:  remote.Action_UPSERT,
 		Address: gointerfaces.ConvertAddressToH160(addr),
@@ -412,8 +408,7 @@ func TestReverseNonces(t *testing.T) {
 // the existing transaction gets "poked" and is getting re-broadcasted
 // this is a workaround for cases when transactions are getting stuck for strange reasons
 // even though logs show they are broadcast
-func TestTxPoke(t *testing.T) {
-	t.Skip("TODO")
+func TestTxnPoke(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	ch := make(chan Announcements, 100)
 	coreDB, _ := temporaltest.NewTestDB(t, datadir.New(t.TempDir()))
@@ -421,7 +416,7 @@ func TestTxPoke(t *testing.T) {
 
 	cfg := txpoolcfg.DefaultConfig
 	sendersCache := kvcache.New(kvcache.DefaultCoherentConfig)
-	pool, err := New(ch, coreDB, cfg, sendersCache, *u256.N1, nil, nil, nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
+	pool, err := New(ch, db, coreDB, cfg, sendersCache, *u256.N1, nil, nil, nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
 	assert.NoError(err)
 	require.True(pool != nil)
 	ctx := context.Background()
@@ -439,8 +434,7 @@ func TestTxPoke(t *testing.T) {
 	}
 	var addr [20]byte
 	addr[0] = 1
-	v := make([]byte, EncodeSenderLengthForStorage(2, *uint256.NewInt(1 * common.Ether)))
-	EncodeSender(2, *uint256.NewInt(1 * common.Ether), v)
+	v := types2.EncodeAccountBytesV3(2, uint256.NewInt(1*common.Ether), make([]byte, 32), 1)
 	change.ChangeBatch[0].Changes = append(change.ChangeBatch[0].Changes, &remote.AccountChange{
 		Action:  remote.Action_UPSERT,
 		Address: gointerfaces.ConvertAddressToH160(addr),
@@ -710,7 +704,7 @@ func TestShanghaiValidateTxn(t *testing.T) {
 			}
 
 			cache := &kvcache.DummyCache{}
-			pool, err := New(ch, coreDB, cfg, cache, *u256.N1, shanghaiTime, nil /* agraBlock */, nil /* cancunTime */, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, logger)
+			pool, err := New(ch, nil, coreDB, cfg, cache, *u256.N1, shanghaiTime, nil /* agraBlock */, nil /* cancunTime */, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, logger)
 			asrt.NoError(err)
 			ctx := context.Background()
 			tx, err := coreDB.BeginRw(ctx)
@@ -758,7 +752,7 @@ func TestSetCodeTxnValidationWithLargeAuthorizationValues(t *testing.T) {
 	chainID := *maxUint256
 	cache := &kvcache.DummyCache{}
 	logger := log.New()
-	pool, err := New(ch, coreDB, cfg, cache, chainID, common.Big0 /* shanghaiTime */, nil, /* agraBlock */
+	pool, err := New(ch, nil, coreDB, cfg, cache, chainID, common.Big0 /* shanghaiTime */, nil, /* agraBlock */
 		common.Big0 /* cancunTime */, common.Big0 /* pragueTime */, fixedgas.DefaultMaxBlobsPerBlock, nil, logger)
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -799,7 +793,6 @@ func TestSetCodeTxnValidationWithLargeAuthorizationValues(t *testing.T) {
 
 // Blob gas price bump + other requirements to replace existing txns in the pool
 func TestBlobTxnReplacement(t *testing.T) {
-	t.Skip("TODO")
 	assert, require := assert.New(t), require.New(t)
 	ch := make(chan Announcements, 5)
 	coreDB, _ := temporaltest.NewTestDB(t, datadir.New(t.TempDir()))
@@ -807,7 +800,7 @@ func TestBlobTxnReplacement(t *testing.T) {
 
 	cfg := txpoolcfg.DefaultConfig
 	sendersCache := kvcache.New(kvcache.DefaultCoherentConfig)
-	pool, err := New(ch, coreDB, cfg, sendersCache, *u256.N1, common.Big0, nil, common.Big0, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
+	pool, err := New(ch, db, coreDB, cfg, sendersCache, *u256.N1, common.Big0, nil, common.Big0, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
 	assert.NoError(err)
 	require.True(pool != nil)
 	ctx := context.Background()
@@ -827,8 +820,7 @@ func TestBlobTxnReplacement(t *testing.T) {
 	addr[0] = 1
 
 	// Add 1 eth to the user account, as a part of change
-	v := make([]byte, EncodeSenderLengthForStorage(2, *uint256.NewInt(1 * common.Ether)))
-	EncodeSender(2, *uint256.NewInt(1 * common.Ether), v)
+	v := types2.EncodeAccountBytesV3(2, uint256.NewInt(1*common.Ether), make([]byte, 32), 1)
 
 	change.ChangeBatch[0].Changes = append(change.ChangeBatch[0].Changes, &remote.AccountChange{
 		Action:  remote.Action_UPSERT,
@@ -974,7 +966,6 @@ func makeBlobTxn() TxnSlot {
 }
 
 func TestDropRemoteAtNoGossip(t *testing.T) {
-	t.Skip("TODO")
 	assert, require := assert.New(t), require.New(t)
 	ch := make(chan Announcements, 100)
 	coreDB, _ := temporaltest.NewTestDB(t, datadir.New(t.TempDir()))
@@ -986,13 +977,13 @@ func TestDropRemoteAtNoGossip(t *testing.T) {
 	logger := log.New()
 	sendersCache := kvcache.New(kvcache.DefaultCoherentConfig)
 
-	txnPool, err := New(ch, coreDB, cfg, sendersCache, *u256.N1, big.NewInt(0), big.NewInt(0), nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, logger)
+	txnPool, err := New(ch, db, coreDB, cfg, sendersCache, *u256.N1, big.NewInt(0), big.NewInt(0), nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, logger)
 	assert.NoError(err)
 	require.True(txnPool != nil)
 
 	ctx := context.Background()
 
-	err = txnPool.Start(ctx, db)
+	err = txnPool.Start(ctx)
 	assert.NoError(err)
 
 	var stateVersionID uint64 = 0
@@ -1009,8 +1000,7 @@ func TestDropRemoteAtNoGossip(t *testing.T) {
 	}
 	var addr [20]byte
 	addr[0] = 1
-	v := make([]byte, EncodeSenderLengthForStorage(2, *uint256.NewInt(1 * common.Ether)))
-	EncodeSender(2, *uint256.NewInt(1 * common.Ether), v)
+	v := types2.EncodeAccountBytesV3(2, uint256.NewInt(1*common.Ether), make([]byte, 32), 1)
 	change.ChangeBatch[0].Changes = append(change.ChangeBatch[0].Changes, &remote.AccountChange{
 		Action:  remote.Action_UPSERT,
 		Address: gointerfaces.ConvertAddressToH160(addr),
@@ -1083,7 +1073,6 @@ func TestDropRemoteAtNoGossip(t *testing.T) {
 }
 
 func TestBlobSlots(t *testing.T) {
-	t.Skip("TODO")
 	assert, require := assert.New(t), require.New(t)
 	ch := make(chan Announcements, 5)
 	coreDB, _ := temporaltest.NewTestDB(t, datadir.New(t.TempDir()))
@@ -1094,7 +1083,7 @@ func TestBlobSlots(t *testing.T) {
 	cfg.TotalBlobPoolLimit = 20
 
 	sendersCache := kvcache.New(kvcache.DefaultCoherentConfig)
-	pool, err := New(ch, coreDB, cfg, sendersCache, *u256.N1, common.Big0, nil, common.Big0, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
+	pool, err := New(ch, db, coreDB, cfg, sendersCache, *u256.N1, common.Big0, nil, common.Big0, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
 	assert.NoError(err)
 	require.True(pool != nil)
 	ctx := context.Background()
@@ -1113,8 +1102,7 @@ func TestBlobSlots(t *testing.T) {
 	var addr [20]byte
 
 	// Add 1 eth to the user account, as a part of change
-	v := make([]byte, EncodeSenderLengthForStorage(0, *uint256.NewInt(1 * common.Ether)))
-	EncodeSender(0, *uint256.NewInt(1 * common.Ether), v)
+	v := types2.EncodeAccountBytesV3(0, uint256.NewInt(1*common.Ether), make([]byte, 32), 1)
 
 	for i := 0; i < 11; i++ {
 		addr[0] = uint8(i + 1)
@@ -1162,7 +1150,6 @@ func TestBlobSlots(t *testing.T) {
 }
 
 func TestGasLimitChanged(t *testing.T) {
-	t.Skip("TODO")
 	assert, require := assert.New(t), require.New(t)
 	ch := make(chan Announcements, 100)
 
@@ -1170,7 +1157,7 @@ func TestGasLimitChanged(t *testing.T) {
 	db := memdb.NewTestPoolDB(t)
 	cfg := txpoolcfg.DefaultConfig
 	sendersCache := kvcache.New(kvcache.DefaultCoherentConfig)
-	pool, err := New(ch, coreDB, cfg, sendersCache, *u256.N1, nil, nil, nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
+	pool, err := New(ch, db, coreDB, cfg, sendersCache, *u256.N1, nil, nil, nil, nil, fixedgas.DefaultMaxBlobsPerBlock, nil, log.New())
 	assert.NoError(err)
 	require.True(pool != nil)
 	ctx := context.Background()
@@ -1180,8 +1167,7 @@ func TestGasLimitChanged(t *testing.T) {
 	h1 := gointerfaces.ConvertHashToH256([32]byte{})
 	var addr [20]byte
 	addr[0] = 1
-	v := make([]byte, EncodeSenderLengthForStorage(2, *uint256.NewInt(1 * common.Ether)))
-	EncodeSender(2, *uint256.NewInt(1 * common.Ether), v)
+	v := types2.EncodeAccountBytesV3(0, uint256.NewInt(1*common.Ether), make([]byte, 32), 1)
 	tx, err := db.BeginRw(ctx)
 	require.NoError(err)
 	defer tx.Rollback()

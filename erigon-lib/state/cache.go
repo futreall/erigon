@@ -73,7 +73,7 @@ func (v *domainVisible) returnGetFromFileCache(c *DomainGetFromFileCache) {
 		return
 	}
 	c.LogStats(v.name)
-	v.caches.Put(c)
+	//v.caches.Put(c)
 }
 
 var (

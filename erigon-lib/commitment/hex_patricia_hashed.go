@@ -166,11 +166,11 @@ var (
 	EmptyCodeHashArray = *(*[length.Hash]byte)(EmptyCodeHash)
 )
 
-func (cell *cell) hashAcc(keccak keccakState, depth int) error {
+func (cell *cell) hashAccKey(keccak keccakState, depth int) error {
 	return hashKey(keccak, cell.accountAddr[:cell.accountAddrLen], cell.hashedExtension[:], depth, cell.hashBuf[:])
 }
 
-func (cell *cell) hashStorage(keccak keccakState, accountKeyLen, downOffset int, hashedKeyOffset int) error {
+func (cell *cell) hashStorageKey(keccak keccakState, accountKeyLen, downOffset int, hashedKeyOffset int) error {
 	return hashKey(keccak, cell.storageAddr[accountKeyLen:cell.storageAddrLen], cell.hashedExtension[downOffset:], hashedKeyOffset, cell.hashBuf[:])
 }
 
@@ -402,7 +402,7 @@ func (cell *cell) deriveHashedKeys(depth int, keccak keccakState, accountKeyLen 
 		cell.hashedExtLen = min(extraLen+cell.hashedExtLen, len(cell.hashedExtension))
 		var hashedKeyOffset, downOffset int
 		if cell.accountAddrLen > 0 {
-			if err := cell.hashAcc(keccak, depth); err != nil {
+			if err := cell.hashAccKey(keccak, depth); err != nil {
 				return err
 			}
 			downOffset = 64 - depth
@@ -414,7 +414,7 @@ func (cell *cell) deriveHashedKeys(depth int, keccak keccakState, accountKeyLen 
 			if depth == 0 {
 				accountKeyLen = 0
 			}
-			if err := cell.hashStorage(keccak, accountKeyLen, downOffset, hashedKeyOffset); err != nil {
+			if err := cell.hashStorageKey(keccak, accountKeyLen, downOffset, hashedKeyOffset); err != nil {
 				return err
 			}
 		}
@@ -768,7 +768,7 @@ func (hph *HexPatriciaHashed) computeCellHash(cell *cell, depth int, buf []byte)
 			// if account key is empty, then we need to hash storage key from the key beginning
 			koffset = 0
 		}
-		if err = cell.hashStorage(hph.keccak, koffset, 0, hashedKeyOffset); err != nil {
+		if err = cell.hashStorageKey(hph.keccak, koffset, 0, hashedKeyOffset); err != nil {
 			return nil, err
 		}
 		cell.hashedExtension[64-hashedKeyOffset] = 16 // Add terminator
@@ -815,7 +815,7 @@ func (hph *HexPatriciaHashed) computeCellHash(cell *cell, depth int, buf []byte)
 		}
 	}
 	if cell.accountAddrLen > 0 {
-		if err := cell.hashAcc(hph.keccak, depth); err != nil {
+		if err := cell.hashAccKey(hph.keccak, depth); err != nil {
 			return nil, err
 		}
 		cell.hashedExtension[64-depth] = 16 // Add terminator

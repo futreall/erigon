@@ -141,6 +141,7 @@ func NewDomain(cfg domainCfg, logger log.Logger) (*Domain, error) {
 		cfg.indexList = withBTree | withExistence
 	}
 	cfg.compressCfg = DomainCompressCfg
+	fmt.Printf("[dbg] %s %b\n", cfg.name, cfg.compression)
 
 	d := &Domain{
 		domainCfg:  cfg,

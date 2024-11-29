@@ -395,7 +395,7 @@ func (c *DumpSnapshots) Run(ctx *Context) error {
 		return err
 	}
 
-	return freezeblocks.DumpBeaconBlocks(ctx, db, 0, to, salt, dirs, estimate.CompressSnapshot.Workers(), log.LvlInfo, log.Root())
+	return freezeblocks.DumpBeaconBlocks(ctx, db, 0, to, salt, dirs, estimate.CompressSnapshot.Workers(), log.LvlDebug, log.Root())
 }
 
 type CheckSnapshots struct {

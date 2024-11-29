@@ -405,7 +405,6 @@ func (b *BpsTree) Get(g *seg.Reader, key []byte) (v []byte, ok bool, offset uint
 		}
 
 		jj++
-		fmt.Printf("[dbg] alex: %d\n", jj)
 
 		cmp, _, err = b.keyCmpFunc(key, m, g, v[:0])
 		if err != nil {

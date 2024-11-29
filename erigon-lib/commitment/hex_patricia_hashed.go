@@ -591,10 +591,12 @@ func (hph *HexPatriciaHashed) completeLeafHash(buf, keyPrefix []byte, kp, kl, co
 	if canEmbed {
 		buf = hph.auxBuffer.Bytes()
 	} else {
-		buf = append(buf, 0x80+length.Hash)
-		if _, err := hph.keccak.Read(buf); err != nil {
+		var hashBuf [33]byte
+		hashBuf[0] = 0x80 + length.Hash
+		if _, err := hph.keccak.Read(hashBuf[1:]); err != nil {
 			return nil, err
 		}
+		buf = append(buf, hashBuf[:]...)
 	}
 	return buf, nil
 }

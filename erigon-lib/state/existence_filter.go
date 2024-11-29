@@ -21,6 +21,7 @@ import (
 	"hash"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/erigontech/erigon-lib/common/dbg"
 	"github.com/erigontech/erigon-lib/common/dir"
@@ -159,6 +160,7 @@ func OpenExistenceFilter(filePath string) (exFilder *ExistenceFilter, err error)
 
 	if !idx.empty {
 		var err error
+		defer func(t time.Time) { fmt.Printf("existence_filter.go:163: %s, %s\n", time.Since(t), fileName) }(time.Now())
 		idx.filter, _, err = bloomfilter.ReadFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("OpenExistenceFilter: %w, %s", err, fileName)

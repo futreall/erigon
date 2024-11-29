@@ -235,7 +235,7 @@ func (be *BranchEncoder) CollectUpdate(
 	if err != nil {
 		return 0, err
 	}
-	update, lastNibble, err := be.EncodeBranch(bitmap, touchMap, afterMap, readCell)
+	update, lastNibble, err := be.EncodeBranch(bitmap, touchMap, afterMap, readCell) // do copy of `update` in the end of func
 	if err != nil {
 		return 0, err
 	}
@@ -251,8 +251,7 @@ func (be *BranchEncoder) CollectUpdate(
 		}
 	}
 	//fmt.Printf("\ncollectBranchUpdate [%x] -> %s\n", prefix, BranchData(update).String())
-	// has to copy :(
-	if err = ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep); err != nil {
+	if err = ctx.PutBranch(common.Copy(prefix), common.Copy(update), prev, prevStep); err != nil { // do copy of `update` in the end of func
 		return 0, err
 	}
 	return lastNibble, nil
@@ -269,7 +268,7 @@ func (be *BranchEncoder) putUvarAndVal(size uint64, val []byte) error {
 	return nil
 }
 
-// Encoded result should be copied before next call to EncodeBranch, underlying slice is reused
+// EncodeBranch - result should be copied before next call (underlying slice is reused)
 func (be *BranchEncoder) EncodeBranch(bitmap, touchMap, afterMap uint16, readCell func(nibble int, skip bool) (*cell, error)) (BranchData, int, error) {
 	be.buf.Reset()
 
@@ -347,11 +346,8 @@ func (be *BranchEncoder) EncodeBranch(bitmap, touchMap, afterMap uint16, readCel
 		}
 		bitset ^= bit
 	}
-	res := make([]byte, be.buf.Len())
-	copy(res, be.buf.Bytes())
-
 	//fmt.Printf("EncodeBranch [%x] size: %d\n", be.buf.Bytes(), be.buf.Len())
-	return res, lastNibble, nil
+	return be.buf.Bytes(), lastNibble, nil
 }
 
 func RetrieveCellNoop(nibble int, skip bool) (*cell, error) { return nil, nil }
@@ -672,7 +668,7 @@ func NewHexBranchMerger(capacity uint64) *BranchMerger {
 	return &BranchMerger{buf: make([]byte, capacity)}
 }
 
-// MergeHexBranches combines two branchData, number 2 coming after (and potentially shadowing) number 1
+// Merge - result should be copied before next call (underlying slice is reused). Combines two branchData, number 2 coming after (and potentially shadowing) number 1.
 func (m *BranchMerger) Merge(branch1 BranchData, branch2 BranchData) (BranchData, error) {
 	if len(branch2) == 0 {
 		return branch1, nil

@@ -427,7 +427,6 @@ func (b *BpsTree) Get(g *seg.Reader, key []byte) (v []byte, ok bool, offset uint
 		}
 	}
 
-	fmt.Printf("[dbg] alex: %d, %s\n", jj, g.FileName())
 	cmp, err = b.bsFinal(key, l, g, v[:0])
 	if err != nil || cmp != 0 {
 		return nil, false, 0, err

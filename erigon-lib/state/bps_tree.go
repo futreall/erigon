@@ -406,7 +406,7 @@ func (b *BpsTree) Get(g *seg.Reader, key []byte) (v []byte, ok bool, offset uint
 
 		jj++
 
-		cmp, _, err = b.keyCmpFunc(key, m, g, v[:0])
+		cmp, err = b._bsIter(key, m, g, v[:0])
 		if err != nil {
 			return nil, false, 0, err
 		}
@@ -428,7 +428,7 @@ func (b *BpsTree) Get(g *seg.Reader, key []byte) (v []byte, ok bool, offset uint
 	}
 
 	fmt.Printf("[dbg] alex: %d, %s\n", jj, g.FileName())
-	cmp, err = b._bsFinal(g, key, l, v[:0])
+	cmp, err = b._bsFinal(key, l, g, v[:0])
 	if err != nil || cmp != 0 {
 		return nil, false, 0, err
 	}
@@ -439,7 +439,11 @@ func (b *BpsTree) Get(g *seg.Reader, key []byte) (v []byte, ok bool, offset uint
 	return v, true, b.offt.Get(l), nil
 }
 
-func (b *BpsTree) _bsFinal(g *seg.Reader, key []byte, l uint64, v []byte) (cmp int, err error) {
+func (b *BpsTree) _bsIter(key []byte, l uint64, g *seg.Reader, v []byte) (cmp int, err error) {
+	cmp, _, err = b.keyCmpFunc(key, l, g, v[:0])
+	return cmp, err
+}
+func (b *BpsTree) _bsFinal(key []byte, l uint64, g *seg.Reader, v []byte) (cmp int, err error) {
 	cmp, _, err = b.keyCmpFunc(key, l, g, v[:0])
 	return cmp, err
 }

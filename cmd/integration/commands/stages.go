@@ -1145,7 +1145,7 @@ func stageExec(db kv.RwDB, ctx context.Context, logger log.Logger) error {
 		}
 
 		for bn := execProgress; bn < block; bn++ {
-			if err := db.Update(ctx, func(tx kv.RwTx) error {
+			if err := db.UpdateNosync(ctx, func(tx kv.RwTx) error {
 				txc.Tx = tx
 				if err := stagedsync.SpawnExecuteBlocksStage(s, sync, txc, bn, ctx, cfg, logger); err != nil {
 					return err

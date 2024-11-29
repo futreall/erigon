@@ -428,15 +428,28 @@ func (b *BpsTree) Get(g *seg.Reader, key []byte) (v []byte, ok bool, offset uint
 	}
 
 	fmt.Printf("[dbg] alex: %d, %s\n", jj, g.FileName())
-	cmp, _, err = b.keyCmpFunc(key, l, g, v[:0])
+	cmp, err = b._bsFinal(g, key, l, v[:0])
 	if err != nil || cmp != 0 {
 		return nil, false, 0, err
 	}
-	if !g.HasNext() {
+	v, ok = b._val(g)
+	if !ok {
 		return nil, false, 0, fmt.Errorf("pair %d/%d key not found in %s", l, b.offt.Count(), g.FileName())
 	}
-	v, _ = g.Next(nil)
 	return v, true, b.offt.Get(l), nil
+}
+
+func (b *BpsTree) _bsFinal(g *seg.Reader, key []byte, l uint64, v []byte) (cmp int, err error) {
+	cmp, _, err = b.keyCmpFunc(key, l, g, v[:0])
+	return cmp, err
+}
+
+func (b *BpsTree) _val(g *seg.Reader) ([]byte, bool) {
+	if !g.HasNext() {
+		return nil, false
+	}
+	v, _ := g.Next(nil)
+	return v, true
 }
 
 func (b *BpsTree) Offsets() *eliasfano32.EliasFano { return b.offt }

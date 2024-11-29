@@ -1043,11 +1043,12 @@ func (t *Updates) TouchPlainKey(key, val []byte, fn func(c *KeyUpdate, val []byt
 			t.tree.ReplaceOrInsert(pivot)
 		}
 	case ModeDirect:
-		if _, ok := t.keys[string(key)]; !ok {
+		keyS := string(key)
+		if _, ok := t.keys[keyS]; !ok {
 			if err := t.etl.Collect(t.hasher(key), key); err != nil {
 				log.Warn("failed to collect updated key", "key", key, "err", err)
 			}
-			t.keys[string(key)] = struct{}{}
+			t.keys[keyS] = struct{}{}
 		}
 	default:
 	}

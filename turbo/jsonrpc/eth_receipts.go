@@ -491,18 +491,18 @@ func (api *APIImpl) GetTransactionReceipt(ctx context.Context, txnHash common.Ha
 
 	//well, let's find amogus
 	println("truly blocknum is:", blockNum)
-	//ok, blockNumFromTxNums, err := rawdbv3.TxNums.FindBlockNum(tx, txNumMin+txnIndex)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//if !ok {
-	//	println("not found in txnums")
-	//} else {
-	//	println("found in txnums blocknum:", blockNumFromTxNums)
-	//}
+	ok, blockNumFromTxNums, err := rawdbv3.TxNums.FindBlockNum(tx, txNumMin+txnIndex)
+	if err != nil {
+		println("findBlockNum error in txnumsmin:", err)
+	}
+	if !ok {
+		println("not found in txnums")
+	} else {
+		println("found in txnums blocknum:", blockNumFromTxNums)
+	}
 	ok, blockNumFromFiles, err := rawdbv3.TxNums.FindBlockNum(tx, txNum)
 	if err != nil {
-		return nil, err
+		println("findBlockNum error in files:", err)
 	}
 	if !ok {
 		println("not found in files")

@@ -239,12 +239,14 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 	}
 	validationPassed = true
 
-	rb := roaring64.New()
-	for offset, _ := range idx.ExtractOffsets() {
-		rb.Add(offset)
-	}
-	rb.RunOptimize()
-	fmt.Printf("[dbg] len(idx.data) end: %s, %d, roaring.GetSizeInBytes()=%d\n", idx.fileName, len(idx.data), rb.GetSizeInBytes())
+	go func() {
+		rb := roaring64.New()
+		for offset, _ := range idx.ExtractOffsets() {
+			rb.Add(offset)
+		}
+		rb.RunOptimize()
+		fmt.Printf("[dbg] len(idx.data) end: %s, %d, roaring.serializedBytes=%d, roaring.cardinality=%d\n", idx.fileName, len(idx.data), rb.GetSerializedSizeInBytes(), rb.GetCardinality())
+	}()
 
 	return idx, nil
 }

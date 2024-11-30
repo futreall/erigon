@@ -30,8 +30,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/RoaringBitmap/roaring"
-	"github.com/RoaringBitmap/roaring/roaring64"
 	"github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/dbg"
 	"github.com/erigontech/erigon-lib/log/v3"
@@ -239,18 +237,14 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 		},
 	}
 	validationPassed = true
-
-	go func() {
-		rb := roaring64.New()
-		rb.AddMany(idx.ExtractOffsetsArray())
-		rb.RunOptimize()
-		fmt.Printf("[dbg] len(idx.data) end: %s, sz=%d, keys=%d, roaring.serializedBytes=%d, roaring.cardinality=%d\n", idx.fileName, len(idx.data), idx.keyCount, rb.GetSerializedSizeInBytes(), rb.GetCardinality())
-
-		rb2 := roaring.New()
-		rb2.AddMany(idx.ExtractOffsetsArrayU32())
-		rb2.RunOptimize()
-		fmt.Printf("[dbg] len(idx.data) end: %s, sz=%d, keys=%d, roaring.serializedBytes=%d, roaring.cardinality=%d, frozen=%d\n", idx.fileName, len(idx.data), idx.keyCount, rb2.GetSerializedSizeInBytes(), rb2.GetCardinality(), rb2.GetFrozenSizeInBytes())
-	}()
+	//
+	//go func() {
+	//	rb := roaring64.New()
+	//	rb.AddMany(idx.ExtractOffsetsArray())
+	//	rb.RunOptimize()
+	//	fmt.Printf("[dbg] len(idx.data) end: %s, sz=%d, keys=%d, roaring.serializedBytes=%d, roaring.cardinality=%d\n", idx.fileName, len(idx.data), idx.keyCount, rb.GetSerializedSizeInBytes(), rb.GetCardinality())
+	//
+	//}()
 
 	return idx, nil
 }

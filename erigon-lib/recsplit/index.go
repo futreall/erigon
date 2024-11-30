@@ -152,6 +152,7 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 	idx.bytesPerRec = int(idx.data[16])
 	idx.recMask = (uint64(1) << (8 * idx.bytesPerRec)) - 1
 	offset := 16 + 1 + int(idx.keyCount)*idx.bytesPerRec
+	fmt.Printf("[dbg] idx.start: %s, %d\n", idx.fileName, offset)
 
 	if offset < 0 {
 		return nil, fmt.Errorf("file %s %w. offset is: %d which is below zero", fName, IncompatibleErr, offset)
@@ -170,7 +171,6 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 	} else {
 		idx.secondaryAggrBound = idx.primaryAggrBound * uint16(math.Ceil(0.21*float64(idx.leafSize)+9./10.))
 	}
-	fmt.Printf("[dbg] idx.salt starts: %s, %d\n", idx.fileName, offset)
 	// Salt
 	idx.salt = binary.BigEndian.Uint32(idx.data[offset:])
 	offset += 4
@@ -182,7 +182,6 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 		idx.startSeed[i] = binary.BigEndian.Uint64(idx.data[offset:])
 		offset += 8
 	}
-	fmt.Printf("[dbg] idx.features starts: %s, %d\n", idx.fileName, offset)
 	features := Features(idx.data[offset])
 	if err := onlyKnownFeatures(features); err != nil {
 		return nil, fmt.Errorf("file %s %w", fName, err)
@@ -198,7 +197,6 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 		offset += size
 
 		if idx.lessFalsePositives {
-			fmt.Printf("[dbg] idx.existence starts: %s, %d\n", idx.fileName, offset)
 			arrSz := binary.BigEndian.Uint64(idx.data[offset:])
 			offset += 8
 			if arrSz != idx.keyCount {
@@ -222,13 +220,11 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 		}
 	}
 
-	fmt.Printf("[dbg] idx.grData starts: %s, %d\n", idx.fileName, offset)
 	l := binary.BigEndian.Uint64(idx.data[offset:])
 	offset += 8
 	p := (*[maxDataSize / 8]uint64)(unsafe.Pointer(&idx.data[offset]))
 	idx.grData = p[:l]
 	offset += 8 * int(l)
-	fmt.Printf("[dbg] idx.ef starts: %s, %d\n", idx.fileName, offset)
 	idx.ef.Read(idx.data[offset:])
 
 	idx.readers = &sync.Pool{

@@ -191,7 +191,7 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 	offset++
 	if idx.enums && idx.keyCount > 0 {
 		var size int
-		fmt.Printf("[dbg] idx.offsetEf starts: %s, %d\n", idx.fileName, offset)
+		fmt.Printf("[dbg] idx.offsetEf starts: %s, %d, idx.bytesPerRec=%d\n", idx.fileName, offset, idx.bytesPerRec)
 		idx.offsetEf, size = eliasfano32.ReadEliasFano(idx.data[offset:])
 		offset += size
 

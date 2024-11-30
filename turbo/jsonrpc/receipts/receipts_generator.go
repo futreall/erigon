@@ -3,6 +3,7 @@ package receipts
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/erigontech/erigon-lib/chain"
 	"github.com/erigontech/erigon-lib/common"
@@ -147,7 +148,7 @@ func (g *Generator) GetReceipts(ctx context.Context, cfg *chain.Config, tx kv.Tx
 	if receipts, ok := g.receiptsCache.Get(block.Hash()); ok {
 		return receipts, nil
 	}
-
+	defer func(t time.Time) { fmt.Printf("receipts_generator.go:150: %s\n", time.Since(t)) }(time.Now())
 	receipts := make(types.Receipts, len(block.Transactions()))
 
 	genEnv, err := g.PrepareEnv(ctx, block, cfg, tx, 0)

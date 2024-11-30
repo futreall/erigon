@@ -152,7 +152,7 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 	idx.bytesPerRec = int(idx.data[16])
 	idx.recMask = (uint64(1) << (8 * idx.bytesPerRec)) - 1
 	offset := 16 + 1 + int(idx.keyCount)*idx.bytesPerRec
-	fmt.Printf("[dbg] idx.start: %s, %d\n", idx.fileName, offset)
+	startOffset := offset
 
 	if offset < 0 {
 		return nil, fmt.Errorf("file %s %w. offset is: %d which is below zero", fName, IncompatibleErr, offset)
@@ -192,7 +192,7 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 	offset++
 	if idx.enums && idx.keyCount > 0 {
 		var size int
-		fmt.Printf("[dbg] idx.offsetEf starts: %s, %d, idx.bytesPerRec=%d, keys=%d\n", idx.fileName, offset, idx.bytesPerRec, idx.keyCount)
+		fmt.Printf("[dbg] idx.offsetEf starts: %s, startOffset=%d idx.bytesPerRec=%d, keys=%d\n", idx.fileName, startOffset, idx.bytesPerRec, idx.keyCount)
 		idx.offsetEf, size = eliasfano32.ReadEliasFano(idx.data[offset:])
 		offset += size
 
@@ -206,6 +206,7 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 			offset += int(arrSz)
 		}
 	}
+
 	// Size of golomb rice params
 	golombParamSize := binary.BigEndian.Uint16(idx.data[offset:])
 	offset += 4

@@ -291,7 +291,7 @@ func (idx *Index) KeyCount() uint64 {
 	return idx.keyCount
 }
 func (idx *Index) touch(pos int) uint64 {
-	fmt.Printf("[dbg] %s, %d\n", idx.fileName)
+	fmt.Printf("[dbg] %s, %d\n", idx.fileName, pos)
 	return binary.BigEndian.Uint64(idx.data[pos:]) & idx.recMask
 	//return idx.data[pos] | idx.data[pos+7] // touch
 }

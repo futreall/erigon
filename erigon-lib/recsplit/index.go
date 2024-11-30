@@ -191,10 +191,12 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 	offset++
 	if idx.enums && idx.keyCount > 0 {
 		var size int
+		fmt.Printf("[dbg] idx.offsetEf starts: %s, %d\n", idx.fileName, offset)
 		idx.offsetEf, size = eliasfano32.ReadEliasFano(idx.data[offset:])
 		offset += size
 
 		if idx.lessFalsePositives {
+			fmt.Printf("[dbg] idx.existence starts: %s, %d\n", idx.fileName, offset)
 			arrSz := binary.BigEndian.Uint64(idx.data[offset:])
 			offset += 8
 			if arrSz != idx.keyCount {
@@ -218,12 +220,15 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 		}
 	}
 
+	fmt.Printf("[dbg] idx.grData starts: %s, %d\n", idx.fileName, offset)
 	l := binary.BigEndian.Uint64(idx.data[offset:])
 	offset += 8
 	p := (*[maxDataSize / 8]uint64)(unsafe.Pointer(&idx.data[offset]))
 	idx.grData = p[:l]
 	offset += 8 * int(l)
+	fmt.Printf("[dbg] idx.ef starts: %s, %d\n", idx.fileName, offset)
 	idx.ef.Read(idx.data[offset:])
+	fmt.Printf("[dbg] len(idx.data) end: %s, %d\n", idx.fileName, len(idx.data))
 
 	idx.readers = &sync.Pool{
 		New: func() interface{} {

@@ -290,6 +290,9 @@ func (idx *Index) Empty() bool {
 func (idx *Index) KeyCount() uint64 {
 	return idx.keyCount
 }
+func (idx *Index) touch(pos int, amountOfBytes int) {
+	_ = idx.data[pos] | idx.data[pos+amountOfBytes] // touch
+}
 
 // Lookup is not thread-safe because it used id.hasher
 func (idx *Index) Lookup(bucketHash, fingerprint uint64) (uint64, bool) {
@@ -355,7 +358,7 @@ func (idx *Index) Lookup(bucketHash, fingerprint uint64) (uint64, bool) {
 	rec := int(cumKeys) + int(remap16(remix(fingerprint+idx.startSeed[level]+b), m))
 	pos := 1 + 8 + idx.bytesPerRec*(rec+1)
 
-	_ = idx.data[pos] | idx.data[pos+7] // touch
+	idx.touch(pos, 8)
 	fmt.Printf("[dbg] %s, %d\n", idx.fileName, pos)
 	found := binary.BigEndian.Uint64(idx.data[pos:]) & idx.recMask
 	if idx.lessFalsePositives {

@@ -170,6 +170,7 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 	} else {
 		idx.secondaryAggrBound = idx.primaryAggrBound * uint16(math.Ceil(0.21*float64(idx.leafSize)+9./10.))
 	}
+	fmt.Printf("[dbg] idx.salt starts: %s, %d\n", idx.fileName, offset)
 	// Salt
 	idx.salt = binary.BigEndian.Uint32(idx.data[offset:])
 	offset += 4
@@ -181,6 +182,7 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 		idx.startSeed[i] = binary.BigEndian.Uint64(idx.data[offset:])
 		offset += 8
 	}
+	fmt.Printf("[dbg] idx.features starts: %s, %d\n", idx.fileName, offset)
 	features := Features(idx.data[offset])
 	if err := onlyKnownFeatures(features); err != nil {
 		return nil, fmt.Errorf("file %s %w", fName, err)

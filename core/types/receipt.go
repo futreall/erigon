@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"time"
 
 	libcommon "github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/hexutil"
@@ -356,6 +357,7 @@ type Receipts []*Receipt
 func (rs Receipts) Len() int { return len(rs) }
 
 func (rs Receipts) Copy() Receipts {
+	defer func(t time.Time) { fmt.Printf("receipt.go:359: %s\n", time.Since(t)) }(time.Now())
 	rsCopy := make(Receipts, 0, rs.Len())
 	for _, r := range rs {
 		rsCopy = append(rsCopy, r.Copy())

@@ -66,7 +66,6 @@ type GossipManager struct {
 	voluntaryExitService         services.VoluntaryExitService
 	blsToExecutionChangeService  services.BLSToExecutionChangeService
 	proposerSlashingService      services.ProposerSlashingService
-	attestationsLimiter          *timeBasedRateLimiter
 }
 
 func NewGossipReceiver(
@@ -104,7 +103,6 @@ func NewGossipReceiver(
 		voluntaryExitService:         voluntaryExitService,
 		blsToExecutionChangeService:  blsToExecutionChangeService,
 		proposerSlashingService:      proposerSlashingService,
-		attestationsLimiter:          newTimeBasedRateLimiter(6*time.Second, 250),
 	}
 }
 
@@ -275,10 +273,7 @@ func (g *GossipManager) routeAndProcess(ctx context.Context, data *sentinel.Goss
 			if err := obj.Attestation.DecodeSSZ(common.CopyBytes(data.Data), int(version)); err != nil {
 				return err
 			}
-			if g.committeeSub.NeedToAggregate(obj.Attestation) || g.attestationsLimiter.tryAcquire() {
-				return g.attestationService.ProcessMessage(ctx, data.SubnetId, obj)
-			}
-			return services.ErrIgnore
+			return g.attestationService.ProcessMessage(ctx, data.SubnetId, obj)
 		default:
 			return fmt.Errorf("unknown topic %s", data.Name)
 		}

@@ -247,9 +247,9 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 		fmt.Printf("[dbg] len(idx.data) end: %s, sz=%d, keys=%d, roaring.serializedBytes=%d, roaring.cardinality=%d\n", idx.fileName, len(idx.data), idx.keyCount, rb.GetSerializedSizeInBytes(), rb.GetCardinality())
 
 		rb2 := roaring.New()
-		rb2.AddMany(idx.ExtractOffsetsArray())
+		rb2.AddMany(idx.ExtractOffsetsArrayU32())
 		rb2.RunOptimize()
-		fmt.Printf("[dbg] len(idx.data) end: %s, sz=%d, keys=%d, roaring.serializedBytes=%d, roaring.cardinality=%d\n", idx.fileName, len(idx.data), idx.keyCount, rb.GetSerializedSizeInBytes(), rb.GetCardinality())
+		fmt.Printf("[dbg] len(idx.data) end: %s, sz=%d, keys=%d, roaring.serializedBytes=%d, roaring.cardinality=%d, frozen=%d\n", idx.fileName, len(idx.data), idx.keyCount, rb2.GetSerializedSizeInBytes(), rb2.GetCardinality(), rb2.GetFrozenSizeInBytes())
 	}()
 
 	return idx, nil

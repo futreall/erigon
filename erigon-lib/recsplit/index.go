@@ -359,7 +359,7 @@ func (idx *Index) Lookup(bucketHash, fingerprint uint64) (uint64, bool) {
 	pos := 1 + 8 + idx.bytesPerRec*(rec+1)
 
 	_ = idx.touch(pos, 7)
-	fmt.Printf("[dbg] %s, %d\n", idx.fileName, pos)
+	fmt.Printf("[dbg] %s, %d, %f\n", idx.fileName, pos, float64(pos)/float64(4096))
 	found := binary.BigEndian.Uint64(idx.data[pos:]) & idx.recMask
 	if idx.lessFalsePositives {
 		return found, idx.existence[found] == byte(bucketHash)

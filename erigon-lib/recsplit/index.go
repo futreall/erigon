@@ -30,6 +30,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/RoaringBitmap/roaring"
 	"github.com/RoaringBitmap/roaring/roaring64"
 	"github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/dbg"
@@ -244,6 +245,11 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 		rb.AddMany(idx.ExtractOffsetsArray())
 		rb.RunOptimize()
 		fmt.Printf("[dbg] len(idx.data) end: %s, sz=%d, keys=%d, roaring.serializedBytes=%d, roaring.cardinality=%d\n", idx.fileName, len(idx.data), idx.keyCount, rb.GetSerializedSizeInBytes(), rb.GetCardinality())
+
+		rb2 := roaring.New()
+		rb2.AddMany(idx.ExtractOffsetsArray())
+		rb2.RunOptimize()
+		fmt.Printf("[dbg] len(idx.data) end: %s, sz=%d, keys=%d, roaring.serializedBytes=%d, roaring.cardinality=%d\n", idx.fileName, len(idx.data), idx.keyCount, rb.GetSerializedSizeInBytes(), rb.GetCardinality())
 	}()
 
 	return idx, nil
@@ -412,6 +418,15 @@ func (idx *Index) ExtractOffsetsArray() (offsets []uint64) {
 	for rec := uint64(0); rec < idx.keyCount; rec++ {
 		offset := binary.BigEndian.Uint64(idx.data[pos:]) & idx.recMask
 		offsets = append(offsets, offset)
+		pos += idx.bytesPerRec
+	}
+	return offsets
+}
+func (idx *Index) ExtractOffsetsArrayU32() (offsets []uint32) {
+	pos := 1 + 8 + idx.bytesPerRec
+	for rec := uint64(0); rec < idx.keyCount; rec++ {
+		offset := binary.BigEndian.Uint64(idx.data[pos:]) & idx.recMask
+		offsets = append(offsets, uint32(offset))
 		pos += idx.bytesPerRec
 	}
 	return offsets

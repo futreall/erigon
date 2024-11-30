@@ -30,6 +30,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/RoaringBitmap/roaring/roaring64"
 	"github.com/erigontech/erigon-lib/common"
 	"github.com/erigontech/erigon-lib/common/dbg"
 	"github.com/erigontech/erigon-lib/log/v3"
@@ -230,7 +231,6 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 	offset += 8 * int(l)
 	fmt.Printf("[dbg] idx.ef starts: %s, %d\n", idx.fileName, offset)
 	idx.ef.Read(idx.data[offset:])
-	fmt.Printf("[dbg] len(idx.data) end: %s, %d\n", idx.fileName, len(idx.data))
 
 	idx.readers = &sync.Pool{
 		New: func() interface{} {
@@ -238,6 +238,14 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 		},
 	}
 	validationPassed = true
+
+	rb := roaring64.New()
+	for offset, _ := range idx.ExtractOffsets() {
+		rb.Add(offset)
+	}
+	rb.RunOptimize()
+	fmt.Printf("[dbg] len(idx.data) end: %s, %d, roaring.GetSizeInBytes()=%d\n", idx.fileName, len(idx.data), rb.GetSizeInBytes())
+
 	return idx, nil
 }
 

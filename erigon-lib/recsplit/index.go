@@ -241,9 +241,7 @@ func OpenIndex(indexFilePath string) (idx *Index, err error) {
 
 	go func() {
 		rb := roaring64.New()
-		for offset, _ := range idx.ExtractOffsets() {
-			rb.Add(offset)
-		}
+		rb.AddMany(idx.ExtractOffsetsArray())
 		rb.RunOptimize()
 		fmt.Printf("[dbg] len(idx.data) end: %s, %d, roaring.serializedBytes=%d, roaring.cardinality=%d\n", idx.fileName, len(idx.data), rb.GetSerializedSizeInBytes(), rb.GetCardinality())
 	}()
@@ -408,6 +406,15 @@ func (idx *Index) ExtractOffsets() map[uint64]uint64 {
 		pos += idx.bytesPerRec
 	}
 	return m
+}
+func (idx *Index) ExtractOffsetsArray() (offsets []uint64) {
+	pos := 1 + 8 + idx.bytesPerRec
+	for rec := uint64(0); rec < idx.keyCount; rec++ {
+		offset := binary.BigEndian.Uint64(idx.data[pos:]) & idx.recMask
+		offsets = append(offsets, offset)
+		pos += idx.bytesPerRec
+	}
+	return offsets
 }
 
 func (idx *Index) RewriteWithOffsets(w *bufio.Writer, m map[uint64]uint64) error {

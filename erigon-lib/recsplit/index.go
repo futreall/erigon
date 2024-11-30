@@ -291,7 +291,7 @@ func (idx *Index) KeyCount() uint64 {
 	return idx.keyCount
 }
 func (idx *Index) touch(pos int) uint64 {
-	return binary.BigEndian.Uint64(idx.data[pos:])
+	return binary.BigEndian.Uint64(idx.data[pos:]) & idx.recMask
 	//return idx.data[pos] | idx.data[pos+7] // touch
 }
 

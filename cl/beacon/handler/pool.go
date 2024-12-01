@@ -136,7 +136,16 @@ func (a *ApiHandler) PostEthV1BeaconPoolAttestations(w http.ResponseWriter, r *h
 			ImmediateProcess: true, // we want to process attestation immediately
 		}
 
-		if err := a.attestationService.ProcessMessage(r.Context(), &subnet, attestationWithGossipData); err != nil && !errors.Is(err, services.ErrIgnore) {
+		if err := a.attestationService.ProcessMessage(r.Context(), &subnet, attestationWithGossipData); err != nil {
+			if errors.Is(err, services.ErrIgnore) {
+				a.logger.Debug("[Beacon API] publishing attestation that needs to be ignored")
+				if a.sentinel != nil {
+					if _, err := a.sentinel.PublishGossip(r.Context(), attestationWithGossipData.GossipData); err != nil {
+						a.logger.Warn("[Beacon API] failed to publish attestation that needs to be ignored", "err", err)
+					}
+				}
+				continue
+			}
 			log.Warn("[Beacon REST] failed to process attestation in attestation service", "err", err)
 			failures = append(failures, poolingFailure{
 				Index:   i,

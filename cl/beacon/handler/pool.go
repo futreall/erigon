@@ -138,7 +138,7 @@ func (a *ApiHandler) PostEthV1BeaconPoolAttestations(w http.ResponseWriter, r *h
 
 		if err := a.attestationService.ProcessMessage(r.Context(), &subnet, attestationWithGossipData); err != nil {
 			if errors.Is(err, services.ErrIgnore) {
-				a.logger.Debug("[Beacon API] publishing attestation that needs to be ignored")
+				a.logger.Debug("[Beacon API] publishing attestation even if it should just be ignored")
 				if a.sentinel != nil {
 					if _, err := a.sentinel.PublishGossip(r.Context(), attestationWithGossipData.GossipData); err != nil {
 						a.logger.Warn("[Beacon API] failed to publish attestation that needs to be ignored", "err", err)

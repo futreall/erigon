@@ -501,7 +501,6 @@ func (db *MdbxKV) openDBIs(ctx context.Context, buckets []string) error {
 		if !recoverable {
 			return err
 		}
-		// fallback to rwtx - to create tables
 	}
 
 	return db.Update(ctx, func(tx kv.RwTx) error {

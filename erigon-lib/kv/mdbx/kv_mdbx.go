@@ -462,7 +462,7 @@ func (db *MdbxKV) CHandle() unsafe.Pointer {
 // otherwise re-try by RW transaction
 // it allow open DB from another process - even if main process holding long RW transaction
 func (db *MdbxKV) openDBIs(ctx context.Context, buckets []string) error {
-	var nonDeprecatedBuckets []string
+	nonDeprecatedBuckets := make([]string, 0, len(buckets))
 	for _, name := range buckets {
 		if db.buckets[name].IsDeprecated {
 			continue

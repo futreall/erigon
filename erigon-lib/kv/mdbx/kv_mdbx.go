@@ -356,7 +356,7 @@ func (opts MdbxOpts) Open(ctx context.Context) (kv.RwDB, error) {
 	}
 
 	buckets := bucketSlice(db.buckets)
-	if err := db.openDBIs(buckets); err != nil {
+	if err := db.openDBIs(ctx, buckets); err != nil {
 		return nil, err
 	}
 
@@ -461,13 +461,18 @@ func (db *MdbxKV) CHandle() unsafe.Pointer {
 // openDBIs - first trying to open existing DBI's in RO transaction
 // otherwise re-try by RW transaction
 // it allow open DB from another process - even if main process holding long RW transaction
-func (db *MdbxKV) openDBIs(buckets []string) error {
-	if db.ReadOnly() {
-		return db.View(context.Background(), func(tx kv.Tx) error {
-			for _, name := range buckets {
-				if db.buckets[name].IsDeprecated {
-					continue
-				}
+func (db *MdbxKV) openDBIs(ctx context.Context, buckets []string) error {
+	var nonDeprecatedBuckets []string
+	for _, name := range buckets {
+		if db.buckets[name].IsDeprecated {
+			continue
+		}
+		nonDeprecatedBuckets = append(nonDeprecatedBuckets, name)
+	}
+
+	if db.ReadOnly() { // open or fail
+		return db.View(ctx, func(tx kv.Tx) error {
+			for _, name := range nonDeprecatedBuckets {
 				if err := tx.(kv.BucketMigrator).CreateBucket(name); err != nil {
 					return err
 				}
@@ -476,29 +481,27 @@ func (db *MdbxKV) openDBIs(buckets []string) error {
 		})
 	}
 
-	if db.Accede() {
-		err := db.View(context.Background(), func(tx kv.Tx) error {
-			for _, name := range buckets {
-				if db.buckets[name].IsDeprecated {
-					continue
-				}
+	if db.Accede() { // open or create
+		err := db.View(ctx, func(tx kv.Tx) error {
+			for _, name := range nonDeprecatedBuckets {
 				if err := tx.(kv.BucketMigrator).CreateBucket(name); err != nil {
 					return err
 				}
 			}
 			return tx.(*MdbxTx).Commit() // when open db as read-only, commit of this RO transaction is required
 		})
-		if err != nil && !errors.Is(err, ErrTableDoesntExists) {
+		if err == nil { // success
+			return nil
+		}
+		recoverable := !errors.Is(err, ErrTableDoesntExists)
+		if !recoverable {
 			return err
 		}
-		// in case of Accede - trying to fallback to rwtx
+		// fallback to rwtx - to create tables
 	}
 
-	return db.Update(context.Background(), func(tx kv.RwTx) error {
-		for _, name := range buckets {
-			if db.buckets[name].IsDeprecated {
-				continue
-			}
+	return db.Update(ctx, func(tx kv.RwTx) error {
+		for _, name := range nonDeprecatedBuckets {
 			if err := tx.(kv.BucketMigrator).CreateBucket(name); err != nil {
 				return err
 			}

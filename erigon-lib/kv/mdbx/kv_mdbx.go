@@ -477,7 +477,9 @@ func (db *MdbxKV) openDBIs(ctx context.Context, buckets []string) error {
 					return err
 				}
 			}
-			return tx.(*MdbxTx).Commit() // when open db as read-only, commit of this RO transaction is required
+			// when open db as read-only, commit of this RO transaction is required.
+			// it's weird - opening DBI on RO-db is "write/mutation operation" - which will be rolled-back if not committed.
+			return tx.(*MdbxTx).Commit()
 		})
 	}
 
@@ -488,7 +490,9 @@ func (db *MdbxKV) openDBIs(ctx context.Context, buckets []string) error {
 					return err
 				}
 			}
-			return tx.(*MdbxTx).Commit() // when open db as read-only, commit of this RO transaction is required
+			// when open db as read-only, commit of this RO transaction is required.
+			// it's weird - opening DBI on RO-db is "write/mutation operation" - which will be rolled-back if not committed.
+			return tx.(*MdbxTx).Commit()
 		})
 		if err == nil { // success
 			return nil

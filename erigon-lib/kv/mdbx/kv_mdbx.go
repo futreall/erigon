@@ -462,7 +462,7 @@ func (db *MdbxKV) CHandle() unsafe.Pointer {
 // otherwise re-try by RW transaction
 // it allow open DB from another process - even if main process holding long RW transaction
 func (db *MdbxKV) openDBIs(buckets []string) error {
-	if db.ReadOnly() || db.Accede() {
+	if db.ReadOnly() {
 		return db.View(context.Background(), func(tx kv.Tx) error {
 			for _, name := range buckets {
 				if db.buckets[name].IsDeprecated {
@@ -474,6 +474,24 @@ func (db *MdbxKV) openDBIs(buckets []string) error {
 			}
 			return tx.(*MdbxTx).Commit() // when open db as read-only, commit of this RO transaction is required
 		})
+	}
+
+	if db.Accede() {
+		err := db.View(context.Background(), func(tx kv.Tx) error {
+			for _, name := range buckets {
+				if db.buckets[name].IsDeprecated {
+					continue
+				}
+				if err := tx.(kv.BucketMigrator).CreateBucket(name); err != nil {
+					return err
+				}
+			}
+			return tx.(*MdbxTx).Commit() // when open db as read-only, commit of this RO transaction is required
+		})
+		if err != nil && !errors.Is(err, ErrTableDoesntExists) {
+			return err
+		}
+		// in case of Accede - trying to fallback to rwtx
 	}
 
 	return db.Update(context.Background(), func(tx kv.RwTx) error {
@@ -803,15 +821,16 @@ func (tx *MdbxTx) CreateBucket(name string) error {
 	}
 
 	dbi, err = tx.tx.OpenDBI(name, nativeFlags, nil, nil)
-
 	if err != nil {
-		return fmt.Errorf("db-talbe doesn't exists: %s, lable: %s, %w. Tip: try run `integration run_migrations` to create non-existing tables", name, tx.db.opts.label, err)
+		return fmt.Errorf("%w: %s, lable: %s, %w. Tip: try run `integration run_migrations`", ErrTableDoesntExists, name, tx.db.opts.label, err)
 	}
 	cnfCopy.DBI = kv.DBI(dbi)
 
 	tx.db.buckets[name] = cnfCopy
 	return nil
 }
+
+var ErrTableDoesntExists = errors.New("table does not exist")
 
 func (tx *MdbxTx) dropEvenIfBucketIsNotDeprecated(name string) error {
 	dbi := tx.db.buckets[name].DBI

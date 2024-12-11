@@ -131,6 +131,8 @@ import (
 	stages2 "github.com/erigontech/erigon/turbo/stages"
 	"github.com/erigontech/erigon/turbo/stages/headerdownload"
 	"github.com/erigontech/erigon/txnprovider"
+	"github.com/erigontech/erigon/txnprovider/composite"
+	"github.com/erigontech/erigon/txnprovider/shutter"
 	"github.com/erigontech/erigon/txnprovider/txpool"
 	"github.com/erigontech/erigon/txnprovider/txpool/txpoolcfg"
 	"github.com/erigontech/erigon/txnprovider/txpool/txpoolutil"
@@ -644,6 +646,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 		return nil, err
 	}
 
+	var txnProviders []txnprovider.TxnProvider
 	config.TxPool.NoGossip = config.DisableTxPoolGossip
 	var miningRPC txpoolproto.MiningServer
 	stateDiffClient := direct.NewStateDiffClientDirect(kvRPC)
@@ -663,7 +666,15 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			return nil, err
 		}
 
-		backend.txnProvider = txpool.NewOrderedTxnProvider(backend.txPool)
+		txnProviders = append(txnProviders, txpool.NewOrderedTxnProvider(backend.txPool))
+	}
+	if config.Shutter.Enabled {
+		txnProviders = append(txnProviders, shutter.NewTxnProvider())
+	}
+	if len(txnProviders) == 1 {
+		backend.txnProvider = txnProviders[0]
+	} else if len(txnProviders) > 1 {
+		backend.txnProvider = composite.NewTxnProvider(txnProviders)
 	}
 
 	backend.notifyMiningAboutNewTxs = make(chan struct{}, 1)

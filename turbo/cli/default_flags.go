@@ -20,6 +20,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/erigontech/erigon/cmd/utils"
+	"github.com/erigontech/erigon/txnprovider/shutter"
 )
 
 // DefaultFlags contains all flags that are used and supported by Erigon binary.
@@ -237,4 +238,8 @@ var DefaultFlags = []cli.Flag{
 	&SyncParallelStateFlushing,
 
 	&utils.ChaosMonkeyFlag,
+}
+
+func init() {
+	DefaultFlags = append(DefaultFlags, shutter.CliFlags...)
 }

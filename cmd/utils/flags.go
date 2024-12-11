@@ -63,6 +63,7 @@ import (
 	"github.com/erigontech/erigon/polygon/heimdall"
 	"github.com/erigontech/erigon/rpc/rpccfg"
 	"github.com/erigontech/erigon/turbo/logging"
+	"github.com/erigontech/erigon/txnprovider/shutter"
 	"github.com/erigontech/erigon/txnprovider/txpool/txpoolcfg"
 )
 
@@ -1594,6 +1595,10 @@ func setTxPool(ctx *cli.Context, fullCfg *ethconfig.Config) {
 	cfg.CommitEvery = libcommon.RandomizeDuration(ctx.Duration(TxPoolCommitEveryFlag.Name))
 }
 
+func setShutter(ctx *cli.Context, cfg *ethconfig.Config) {
+	cfg.Shutter = shutter.ConfigFromCli(ctx)
+}
+
 func setEthash(ctx *cli.Context, datadir string, cfg *ethconfig.Config) {
 	if ctx.IsSet(EthashDatasetDirFlag.Name) {
 		cfg.Ethash.DatasetDir = ctx.String(EthashDatasetDirFlag.Name)
@@ -1919,6 +1924,7 @@ func SetEthConfig(ctx *cli.Context, nodeConfig *nodecfg.Config, cfg *ethconfig.C
 	setTxPool(ctx, cfg)
 	cfg.TxPool = ethconfig.DefaultTxPool2Config(cfg)
 	cfg.TxPool.DBDir = nodeConfig.Dirs.TxPool
+	setShutter(ctx, cfg)
 
 	setEthash(ctx, nodeConfig.Dirs.DataDir, cfg)
 	setClique(ctx, &cfg.Clique, nodeConfig.Dirs.DataDir)

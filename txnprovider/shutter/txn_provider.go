@@ -27,7 +27,11 @@ const shutterProviderPriority = 110
 var _ txnprovider.TxnProvider = TxnProvider{}
 
 type TxnProvider struct {
-	pool *Pool
+	pool Pool
+}
+
+func NewTxnProvider() TxnProvider {
+	return TxnProvider{}
 }
 
 func (p TxnProvider) Priority() int {

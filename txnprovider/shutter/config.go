@@ -19,6 +19,6 @@ var (
 
 	EnabledFlag = cli.BoolFlag{
 		Name:  "shutter",
-		Usage: "Enable the Shutter private transaction provider (defaults to false)",
+		Usage: "Enable the Shutter encrypted transactions provider (defaults to false)",
 	}
 )

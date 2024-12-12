@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -205,6 +206,9 @@ func ExecV3(ctx context.Context,
 	initialCycle bool,
 	isMining bool,
 ) error {
+	fmt.Println("LAL ExecV3", workerCount, maxBlockNum, initialCycle, isMining)
+	debug.PrintStack()
+
 	// TODO: e35 doesn't support parallel-exec yet
 	parallel = false //nolint
 
@@ -246,6 +250,9 @@ func ExecV3(ctx context.Context,
 	var err error
 	inMemExec := txc.Doms != nil
 	var doms *state2.SharedDomains
+
+	fmt.Println("LAL inMemExec?", inMemExec)
+
 	if inMemExec {
 		doms = txc.Doms
 	} else {
@@ -277,6 +284,8 @@ func ExecV3(ctx context.Context,
 	blockNum = doms.BlockNum()
 	outputTxNum.Store(doms.TxNum())
 
+	fmt.Println("LAL blockNum:", blockNum, "txNumInDB", txNumInDB)
+
 	if maxBlockNum < blockNum {
 		return nil
 	}
@@ -286,11 +295,14 @@ func ExecV3(ctx context.Context,
 		shouldGenerateChangesets = false
 	}
 
+	fmt.Println("LAL shouldGenerateChangesets", shouldGenerateChangesets)
+
 	if maxBlockNum > blockNum+16 {
 		log.Info(fmt.Sprintf("[%s] starting", execStage.LogPrefix()),
-			"from", blockNum, "to", maxBlockNum, "fromTxNum", doms.TxNum(), "offsetFromBlockBeginning", offsetFromBlockBeginning, "initialCycle", initialCycle, "useExternalTx", useExternalTx, "inMem", inMemExec)
+			"from", blockNum, "to", maxBlockNum, " ", doms.TxNum(), "offsetFromBlockBeginning", offsetFromBlockBeginning, "initialCycle", initialCycle, "useExternalTx", useExternalTx, "inMem", inMemExec)
 	}
 
+	fmt.Println("LAL pre build 1")
 	agg.BuildFilesInBackground(outputTxNum.Load())
 
 	var count uint64
@@ -425,6 +437,7 @@ func ExecV3(ctx context.Context,
 			"from", blockNum, "to", maxBlockNum, "fromTxNum", executor.domains().TxNum(), "offsetFromBlockBeginning", offsetFromBlockBeginning, "initialCycle", initialCycle, "useExternalTx", useExternalTx)
 	}
 
+	fmt.Println("LAL pre build 2")
 	agg.BuildFilesInBackground(outputTxNum.Load())
 
 	var readAhead chan uint64
@@ -591,6 +604,7 @@ Loop:
 			if _, err := executor.execute(ctx, txTasks); err != nil {
 				return err
 			}
+			fmt.Println("LAL pre build 3")
 			agg.BuildFilesInBackground(outputTxNum.Load())
 		} else {
 			se := executor.(*serialExecutor)
@@ -749,6 +763,7 @@ Loop:
 		}
 	}
 
+	fmt.Println("LAL pre build 4")
 	agg.BuildFilesInBackground(outputTxNum.Load())
 
 	return nil

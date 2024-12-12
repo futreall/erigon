@@ -1979,12 +1979,22 @@ func lastIdInDB(db kv.RoDB, domain *Domain) (lstInDb uint64) {
 }
 
 func lastIdInDBNoHistory(db kv.RoDB, domain *Domain) (lstInDb uint64) {
+	fmt.Println("LAL BuildFilesInBackground lastIdInDBNoHistory start tx")
+
 	if err := db.View(context.Background(), func(tx kv.Tx) error {
+		fmt.Println("LAL BuildFilesInBackground lastIdInDBNoHistory in tx")
+
 		//lstInDb = domain.maxStepInDB(tx)
 		lstInDb = domain.maxStepInDBNoHistory(tx)
+
+		fmt.Println("LAL BuildFilesInBackground lastIdInDBNoHistory tx")
+
 		return nil
 	}); err != nil {
 		log.Warn("[snapshots] lastIdInDB", "err", err)
 	}
+
+	fmt.Println("LAL BuildFilesInBackground lastIdInDBNoHistory commited tx")
+
 	return lstInDb
 }

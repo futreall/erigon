@@ -1668,6 +1668,8 @@ func (a *Aggregator) BuildFilesInBackground(txNum uint64) chan struct{} {
 		defer a.wg.Done()
 		defer a.buildingFiles.Store(false)
 
+		fmt.Println("LAL BuildFilesInBackground start goroutine")
+
 		if a.snapshotBuildSema != nil {
 			//we are inside own goroutine - it's fine to block here
 			if err := a.snapshotBuildSema.Acquire(a.ctx, 1); err != nil {
@@ -1676,6 +1678,7 @@ func (a *Aggregator) BuildFilesInBackground(txNum uint64) chan struct{} {
 			}
 			defer a.snapshotBuildSema.Release(1)
 		}
+		fmt.Println("LAL BuildFilesInBackground read last id in db")
 
 		lastInDB := max(
 			lastIdInDB(a.db, a.d[kv.AccountsDomain]),
@@ -1956,12 +1959,22 @@ func (ac *AggregatorRoTx) Close() {
 
 // Inverted index tables only
 func lastIdInDB(db kv.RoDB, domain *Domain) (lstInDb uint64) {
+	fmt.Println("LAL BuildFilesInBackground lastIdInDB start tx")
+
 	if err := db.View(context.Background(), func(tx kv.Tx) error {
+		fmt.Println("LAL BuildFilesInBackground lastIdInDB in tx")
+
 		lstInDb = domain.maxStepInDB(tx)
+
+		fmt.Println("LAL BuildFilesInBackground commiting tx")
+
 		return nil
 	}); err != nil {
 		log.Warn("[snapshots] lastIdInDB", "err", err)
 	}
+
+	fmt.Println("LAL BuildFilesInBackground commited tx")
+
 	return lstInDb
 }
 

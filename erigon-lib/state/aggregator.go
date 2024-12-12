@@ -1654,6 +1654,8 @@ func (a *Aggregator) BuildFilesInBackground(txNum uint64) chan struct{} {
 	}
 
 	if ok := a.buildingFiles.CompareAndSwap(false, true); !ok {
+		fmt.Println("LAL BuildFilesInBackground busy")
+
 		close(fin)
 		return fin
 	}

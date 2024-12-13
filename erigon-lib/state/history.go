@@ -675,7 +675,6 @@ func (h *History) collate(ctx context.Context, step, txFrom, txTo uint64, roTx k
 	defer bitmapdb.ReturnToPool64(bitmap)
 
 	baseTxNum := step * h.aggregationStep
-	log.Info("*************", "aggregationStep", h.aggregationStep, "baseTxNum", baseTxNum)
 	loadBitmapsFunc := func(k, v []byte, table etl.CurrentTableReader, next etl.LoadNextFunc) error {
 		txNum := binary.BigEndian.Uint64(v)
 		if !initialized {
